@@ -1,0 +1,18 @@
+{
+  "enabled":true,
+  "dev":false,
+  "changelogEnabled":true,
+  "controller":{
+    "usesEnergy":true,
+    "energyCapacity":32000,
+    "controllerMaxReceive":2147483647
+  },
+  "energy_uses":{
+    "controller":0,
+    "diskDrive":0,
+    "diskDrivePerDisk":1,
+    "grid":2,
+    "craftingGrid":4,
+    "cable":0
+  }
+}
