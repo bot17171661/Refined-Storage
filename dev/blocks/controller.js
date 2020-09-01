@@ -916,8 +916,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		this.data.usage = usage;
 	},
 	energyReceive: function (type, amount, voltage) {
-		amount = type == 'Eu' ? amount * 4 : amount;
-		amount = Math.min(amount, Config.controller.controllerMaxReceive);
+		amount = Math.min(amount * EnergyTypeRegistry.getValueRatio(type, 'FE'), Config.controller.controllerMaxReceive);
 		var add = Math.min(amount, this.getCapacity() - this.data.energy);
 		if(!this.data.isActive && this.data.allowSetIsActive != false)this.setActive(true);
 		this.data.energy += add;

@@ -249,7 +249,7 @@ const jSetTimeout = function (__fun, __mil) {
 	var timer = new Timer();
 	var task = new TimerTask({
 		run: function () {
-			if (__fun()) timer.cancel();
+			__fun();
 		}
 	})
 	timer.schedule(task, __mil);
@@ -469,7 +469,7 @@ const createAnim = function(_values, _duration, _updateFunc){
 const stopAnim = function(_animation){
 	if(_animation && _animation.end && _animation.isStarted())JAVA_HANDLER_THREAD.post({
 		run: function(){
-			_animation.cancel();
+			_animation.end();
 		}
 	})
 }

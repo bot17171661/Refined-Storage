@@ -332,6 +332,8 @@ const RefinedStorage = {
 	paramsMap: {},
 	createTile: function (id, params) {
 		RSgroup.add(id, -1);
+		if(!params.defaultValues) params.defaultValues = {};
+		params.defaultValues.NETWORK_ID = 'f';
 		params.defaultValues.last_redstone_event = {power: 0};
 		params.blockInfo = {
 			id: id
