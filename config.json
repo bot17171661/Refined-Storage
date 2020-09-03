@@ -13,6 +13,7 @@
     "diskDrivePerDisk":1,
     "grid":2,
     "craftingGrid":4,
-    "cable":0
+    "cable":0,
+    "interface":3
   }
 }

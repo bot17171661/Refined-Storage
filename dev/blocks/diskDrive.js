@@ -375,13 +375,6 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		}
 		return items;
 	},
-	destroy: function () {
-		if (this.data.NETWORK_ID != "f" && Network[this.data.NETWORK_ID]) {
-			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
-			var str = this.x + ',' + this.y + ',' + this.z;
-			delete Network[this.data.NETWORK_ID][str];
-		}
-	},
 	pushItem: function (item) {
 	},
 	addItem: function (item, count) {

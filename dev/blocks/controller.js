@@ -68,7 +68,7 @@ Block.registerPlaceFunction("RS_controller", function (coords, item, block) {
 	if(item.data == 3 && tile.data){
 		tile.data.isCreative = true;
 		tile.data.energy = Config.controller.energyCapacity;
-		tile.setActive(true);
+		//tile.setActive(true);
 		return;
 	}
 	if (item.extra && item.extra.getInt('energy') && tile.data) {
@@ -689,12 +689,19 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				}
 			}
 			Network.push(_data);
+			var ths = this;
 			setTimeout(function(){
 				_data['info'].updateItems();
+				ths.updateControllerNetwork(true);
+				ths.updateNetMap();
+				ths.setActive(ths.data.energy > ths.data.usage);
+				ths.refreshModel();
 			},1)
-			this.updateControllerNetwork(true);
-			this.setActive(this.data.energy > 0);
-			this.refreshModel();
+		}
+	},
+	updateItems: function(){
+		if(this.data.NETWORK_ID != 'f'){
+			Network[this.data.NETWORK_ID].info.updateItems();
 		}
 	},
 	updateControllerNetwork: function(_first){
@@ -956,14 +963,15 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		this.data.usage = usage;
 		if (this.data.energy >= usage && this.data.energy != 0){
 			if(!this.data.activePost) {
-				set_is_active_for_blocks_net(this.data.NETWORK_ID, true, true);
+				this.setActive(true);
+				//set_is_active_for_blocks_net(this.data.NETWORK_ID, true, true);
 				this.data.activePost = true;
 			}
 			if(Config.controller.usesEnergy && !this.data.isCreative)this.data.energy -= usage;
 		} else {
 			if(this.data.activePost) {
 				this.setActive(false);
-				set_is_active_for_blocks_net(this.data.NETWORK_ID, false, true);
+				//set_is_active_for_blocks_net(this.data.NETWORK_ID, false, true);
 				this.data.activePost = false;
 			}
 		}

@@ -10,6 +10,7 @@ RefinedStorage.createMapBlock("RS_interface", [
 ]);
 mod_tip(BlockID['RS_interface']);
 RS_blocks.push(BlockID.RS_interface);
+EnergyUse[BlockID['RS_interface']] = Config.energy_uses.interface;
 
 
 
@@ -19,5 +20,5 @@ RefinedStorage.createTile(BlockID.RS_interface, {
     },
     refreshModel: function(){
         RefinedStorage.mapTexture(this, this.data.isActive ? 'interface_on' : 'interface_off');
-    }
+	}
 })

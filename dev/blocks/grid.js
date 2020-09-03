@@ -871,14 +871,9 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		this.moveCurToPage(this.data.page - 1);
 		if(this.post_RefreshPageFull)this.post_RefreshPageFull();
 	},
-	destroy: function () {
+	post_destroy: function () {
 		delete temp_data[this.coords_id()];
 		this.container.slots = {};
-		if (this.data.NETWORK_ID != "f" && Network[this.data.NETWORK_ID]) {
-			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
-			var str = this.x + ',' + this.y + ',' + this.z;
-			delete Network[this.data.NETWORK_ID][str];
-		}
 	},
 	sort: function (type) {
 		if (this.data.reverse_filter) {
