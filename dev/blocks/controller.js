@@ -31,6 +31,7 @@ RefinedStorage.createMapBlock("RS_controller", [
 ]);
 mod_tip(BlockID['RS_controller']);
 RS_blocks.push(BlockID.RS_controller);
+ICRender.getGroup("ic-wire").add(BlockID.RS_controller, -1);
 
 var Controller_2_extra = new ItemExtraData();
 Controller_2_extra.putInt('energy', Config.controller.energyCapacity);
