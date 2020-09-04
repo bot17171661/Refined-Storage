@@ -706,7 +706,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	updateControllerNetwork: function(_first){
-		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first/* , function(coords, block){
+		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, this.data.isActive/* , function(coords, block){
 			if(block.id == BlockID.RS_controller/*  && cts(this) != cts(coords) ){
 				alert('WIY WIY WIY WIY');
 				World.destroyBlock(coords.x, coords.y, coords.z, true);

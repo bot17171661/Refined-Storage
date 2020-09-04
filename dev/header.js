@@ -66,7 +66,7 @@ const searchController_net = function (net_id) {
 	}
 }
 
-function set_net_for_blocks(_coords, net_id, _self, _first) {
+function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive) {
 	var outCoords = [];
 	outCoords.push(cts(_coords));
 	var cableDeleting = [];
@@ -98,7 +98,8 @@ function set_net_for_blocks(_coords, net_id, _self, _first) {
 				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z) || World.addTileEntity(coordss.x, coordss.y, coordss.z);
 				if (tile) {
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
-					tile.update_network(net_id, _first);
+					tile.update_network(net_id, _first || (_defaultActive != undefined));
+					if(_defaultActive)tile.setActive(_defaultActive);
 				}
 				_search(coordss);
 			}
@@ -122,7 +123,8 @@ function set_net_for_blocks(_coords, net_id, _self, _first) {
 				var tile = World.getTileEntity(_coords.x, _coords.y, _coords.z) || World.addTileEntity(_coords.x, _coords.y, _coords.z);
 				if (tile) {
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
-					tile.update_network(net_id, _first);
+					tile.update_network(net_id, _first || (_defaultActive != undefined));
+					if(_defaultActive)tile.setActive(_defaultActive);
 				}
 			}
 		}
