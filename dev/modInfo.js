@@ -508,7 +508,7 @@
                     var craftsThread = java.lang.Thread({
                         run: function(){
                             try {
-                                nextChangelog();
+                                for(var i = 0; i < 3; i++)nextChangelog();
                             } catch(err){
                                 alert('Sorry, i broke :_(' + JSON.stringify(err));
                             }
@@ -562,7 +562,7 @@
     }
 
     function initMainChangelogVersions(){
-        for(var i = 0; i < 3; i++)nextChangelog();
+        for(var i = 0; i < 5; i++)nextChangelog();
     }
 
     var newest_version = getNewestVersion();

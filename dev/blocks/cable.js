@@ -14,7 +14,7 @@ mod_tip(BlockID['RS_cable']);
 RS_blocks.push(BlockID['RS_cable']);
 EnergyUse[BlockID['RS_cable']] = Config.energy_uses.cable;
 
-Block.registerPlaceFunction('RS_cable', function(coords, item, block){
+/* Block.registerPlaceFunction('RS_cable', function(coords, item, block){
 	var coords = World.canTileBeReplaced(block.id, block.data) ? coords : coords.relative;
 	var relBlock = World.getBlock(coords.x, coords.y, coords.z);
 	if (relBlock.id != 0 && relBlock.id != 9 && relBlock.id != 11) return;
@@ -26,7 +26,7 @@ Block.registerPlaceFunction('RS_cable', function(coords, item, block){
 			tile.updateControllerNetwork();
 		}
 	}
-});
+}); */
 
 (function () {
 	var width = 1/4;

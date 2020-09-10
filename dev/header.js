@@ -4,6 +4,7 @@ const WorkbenchFieldAPI = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.
 const zhekaCompiler = WRAP_JAVA('com.zhekasmirnov.innercore.mod.executable.Compiler');
 
 IMPORT("EnergyNet");
+IMPORT("StorageInterface");
 
 var Config = {
 	reload: function () {
@@ -66,7 +67,7 @@ const searchController_net = function (net_id) {
 	}
 }
 
-function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive) {
+function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _func) {
 	var outCoords = [];
 	outCoords.push(cts(_coords));
 	var cableDeleting = [];
@@ -181,8 +182,9 @@ function set_is_active_for_blocks_net(net_id, _state, isController) {
 	}
 }
 
-function checkAndSetNetOnCoords(coords){
-	if(!searchController(coords, true))set_net_for_blocks(coords, 'f', true);
+function checkAndSetNetOnCoords(coords, update){
+	if(!(controllerCoords = searchController(coords, true)))set_net_for_blocks(coords, 'f', true);
+	if(update && controllerCoords && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
 }
 
 function searchBlocksInNetwork(net_id, id){
@@ -308,8 +310,11 @@ var Network = [];
 }, 60) */
 
 const RS_blocks = [];
+Callback.addCallback('PostLoaded', function(){
+	for(var i in RS_blocks)World.setBlockChangeCallbackEnabled(RS_blocks[i], true);
+})
 
-Callback.addCallback('DestroyBlock', function(coords, block){
+/* Callback.addCallback('DestroyBlock', function(coords, block){
 	if (block.id == BlockID.RS_cable) {
 		for(var i in Network){
 			if(Network[i][cts(coords)]) delete Network[i][cts(coords)];
@@ -323,7 +328,29 @@ Callback.addCallback('DestroyBlock', function(coords, block){
 		}
 		checkAndSetNetOnCoords(zCoords);
 	}
-})
+}); */
+Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock){
+	if (oldBlock.id == BlockID.RS_cable) {
+		for(var i in Network){
+			if(Network[i][cts(coords)]) delete Network[i][cts(coords)];
+		}
+	}
+	var isOldBlock = RS_blocks.indexOf(oldBlock.id) != -1;
+	var isNewBlock = RS_blocks.indexOf(newBlock.id) != -1;
+	if(isNewBlock && newBlock.id != BlockID.RS_cable)World.addTileEntity(coords.x, coords.y, coords.z);
+	if(oldBlock.id != BlockID.RS_controller && isOldBlock)for(var i in sides){
+		var zCoords = {
+			x: coords.x + sides[i][0],
+			y: coords.y + sides[i][1],
+			z: coords.z + sides[i][2]
+		}
+		checkAndSetNetOnCoords(zCoords);
+	}
+	if(newBlock.id == BlockID.RS_cable){
+		if((controllerCoords = searchController(coords, true)) && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
+	}
+	//alert('Block changed: ' + cts(coords) + ' : ' + JSON.stringify(oldBlock) + ' : ' + JSON.stringify(newBlock));
+});
 
 const EnergyUse = {}
 
@@ -346,9 +373,29 @@ const RefinedStorage = {
 		}
 		if(!params.init){
 			params.init = function () {
-				if(!this.data.createdCalled) this.data.NETWORK_ID = 'f';
+				//alert(cts(this) + ' : init');
+				if(!this.data.createdCalled) {
+					this.data.NETWORK_ID = 'f';
+					this.setActive(false);
+				}
 				this.data.block_data = World.getBlock(this.x, this.y, this.z).data;
 				if(this.refreshModel)this.refreshModel();
+				this.container.setOnCloseListener({
+					onClose: function(container, window){
+						var tile = container.tileEntity;
+						if(tile && tile.onWindowClose){
+							tile.onWindowClose(container, window);
+						}
+					}
+				});
+				this.container.setOnOpenListener({
+					onOpen: function(container, window){
+						var tile = container.tileEntity;
+						if(tile && tile.onWindowOpen){
+							tile.onWindowOpen(container, window);
+						}
+					}
+				});
 				if(this.post_init)this.post_init();
 				this.data.createdCalled = false;
 			}
@@ -376,6 +423,7 @@ const RefinedStorage = {
 		}
 		if (!params.created) {
 			params.created = function () {
+				//alert(cts(this) + ' : created');
 				this.data.createdCalled = true;
 				if (this.pre_created) this.pre_created();
 				var controller = searchController(this);
@@ -436,7 +484,7 @@ const RefinedStorage = {
 		if(!params.refreshRedstoneMode){
 			params.refreshRedstoneMode = function () {
 				if(this.data.redstone_mode == 0){
-
+					this.setActive(true);
 				} else if(this.redstoneAllowActive(this.data.last_redstone_event)){
 					this.setActive(true);
 				} else {
@@ -452,7 +500,15 @@ const RefinedStorage = {
 		if(!params.destroy){
 			params.destroy = function(){
 				if(this.data.NETWORK_ID != 'f' && Network[this.data.NETWORK_ID]) delete Network[this.data.NETWORK_ID][cts(this)];
+				this.data.NETWORK_ID = 'f';
+				BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
 				if(this.post_destroy) this.post_destroy();
+			}
+		}
+		if(!params.isWorkAllowed){
+			params.isWorkAllowed = function(){
+				if(this.data.NETWORK_ID == "f" || !Network[this.data.NETWORK_ID] || !this.data.isActive) return false;
+				return true;
 			}
 		}
 		this.paramsMap[id] = params;

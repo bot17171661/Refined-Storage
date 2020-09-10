@@ -357,7 +357,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	craftsMoveCur: function (event, lite) {
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened() && !lite) this.craftsMoveCurToPage(0);
 			return;
 		}
@@ -388,7 +388,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	craftsMoveCurToPage: function (page) {
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened()) {
 				var content = this.container.getGuiContent();
 				this.container.getElement('crafts_slider').setPosition(content.elements["crafts_slider"].x, content.elements["crafts_slider"].start_y);
@@ -444,12 +444,12 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		BlockRenderer.mapAtCoords(this.x, this.y, this.z, render);
 	},
 	getCrafts: function(){
-		if (this.data.NETWORK_ID == "f") return [];
+		if (!this.isWorkAllowed()) return [];
 		if(!Network[this.data.NETWORK_ID].info.crafts) this.updateCrafts();
 		return Network[this.data.NETWORK_ID].info.crafts;
 	},
 	updateCrafts: function(_cb){
-		if (this.data.NETWORK_ID == "f") return false;
+		if (!this.isWorkAllowed()) return false;
 		var items = this.originalItems();
 		var craftsTextSearch;
 		if(this.data.craftsTextSearch) craftsTextSearch = new RegExp(this.data.craftsTextSearch, "i");
@@ -479,7 +479,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		return true;
 	},
 	craftsPages: function(){
-		if (this.data.NETWORK_ID == "f") return 1;
+		if (!this.isWorkAllowed()) return 1;
 		var content = this.container.getGuiContent();
 		var items = this.getCrafts();
 		if(!items || items.length == 0) return 1;
@@ -514,7 +514,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		this.data.craftsPage = num;
 	},
 	provideCraft: function(count){
-		if(this.data.NETWORK_ID == "f" || !this.data.isActive || !this.data.selectedRecipe || !this.data.selectedRecipe.craftable) return false;
+		if(!this.isWorkAllowed() || !this.data.selectedRecipe || !this.data.selectedRecipe.craftable) return false;
 		var netFuncs = Network[this.data.NETWORK_ID].info;
 		var selectedRecipe = this.data.selectedRecipe;
 		var javaRecipe = selectedRecipe.javaRecipe;
@@ -568,8 +568,9 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		return true;
 	},
 	selectRecipe: function(javaRecipe){
-		if (!javaRecipe || this.data.NETWORK_ID == "f" || !this.data.isActive) return false;
+		if (!javaRecipe || !this.isWorkAllowed()) return false;
 		var result_item = javaRecipe.getResult();
+		if(!result_item) return false;
 		this.container.setSlot('craft_result', result_item.id, result_item.count, result_item.data, result_item.extra || null);
 		var items = javaRecipe.getSortedEntries();
 		if(!items) return false;
@@ -626,7 +627,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				this.data.refreshCrafts = false;
 			}
 		}
-		if(!this.data.isActive || this.data.NETWORK_ID == "f") return;
+		if(!this.isWorkAllowed()) return;
 		if(this.data.pushDeleteEvents)for(var i in this.data.pushDeleteEvents){
 			var event = this.data.pushDeleteEvents[i];
 			if(!event) {

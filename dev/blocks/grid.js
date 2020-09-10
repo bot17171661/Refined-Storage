@@ -596,6 +596,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		this.data.textSearch = false;
 		if (this.container.isOpened()) return true;
 		this.container.openAs(gridGUI);
+		alert(this.data.NETWORK_ID + ' : ' + this.data.isActive);
 		var ths = this;
 		setTimeout(function(){
 			ths.items();
@@ -618,9 +619,21 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (this.data.redstone_mode || 0);
 		return true;
 	},
+	onWindowClose: function(){
+		if(this.data.NETWORK_ID == 'f') return;
+		var coords_id = this.coords_id();
+		Network[this.data.NETWORK_ID][coords_id].isOpenedGrid = false;
+		if((iIndex = Network[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id})) != -1) Network[this.data.NETWORK_ID].info.openedGrids.splice(iIndex, 1);
+	},
+	onWindowOpen: function(){
+		if(this.data.NETWORK_ID == 'f') return;
+		var coords_id = this.coords_id();
+		Network[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
+		if(Network[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id}) == -1) Network[this.data.NETWORK_ID].info.openedGrids.push({x: this.x, y: this.y, z: this.z});
+	},
 	moveCur: function (event, lite) {
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened() && !lite) this.moveCurToPage(0);
 			return;
 		}
@@ -651,14 +664,15 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		this.switchPage(page + 1);
 	},
 	post_init: function(){
-		Saver.registerObject(this.container, EMPTY_SAVER);
+		//alert('grid init');
+		/* Saver.registerObject(this.container, EMPTY_SAVER);
 		Saver.setObjectIgnored(this.data.pushDeleteEvents, true);
-		this.container = new UI.Container(this);
+		this.container = new UI.Container(this); */
 		this.data.pushDeleteEvents = {};
 	},
 	moveCurToPage: function (page) {
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened()) {
 				var content = this.container.getGuiContent();
 				this.container.getElement('slider_button').setPosition(content.elements["slider_button"].x, content.elements["slider_button"].start_y);
@@ -777,7 +791,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		}
 	},
 	items: function () {
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			this.items_list([]);
 			return [];
 		}
@@ -799,39 +813,39 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		return items;
 	},
 	originalItems: function(){
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			return [];
 		}
 		return Network[this.data.NETWORK_ID].info.items;
 	},
 	originalItemsMap: function(){
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			return [];
 		}
 		return Network[this.data.NETWORK_ID].info.items_map;
 	},
 	originalOnlyItemsMap: function(){
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			return [];
 		}
 		return Network[this.data.NETWORK_ID].info.just_items_map;
 	},
 	originalOnlyItemsExtraMap: function(){
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			return [];
 		}
 		return Network[this.data.NETWORK_ID].info.just_items_map_extra;
 	},
 	pushItem: function (item, count) {
 		count = count || item.count;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) return count;
+		if (!this.isWorkAllowed()) return count;
 		var res = Network[this.data.NETWORK_ID].info.pushItem(item, count);
 		if(this.post_pushItem)this.post_pushItem(item, count, res);
 		return res;
 	},
 	deleteItem: function (item, count) {
 		count = count || item.count;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) return count;
+		if (!this.isWorkAllowed()) return count;
 		var res = Network[this.data.NETWORK_ID].info.deleteItem(item, count);
 		if(this.post_deleteItem)this.post_deleteItem(item, count, res);
 		return res;
@@ -840,7 +854,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		//if (this.data.NETWORK_ID == "f") return false;
 	},
 	switchPage: function (num) {
-		if (!this.container.isOpened() || this.data.NETWORK_ID == "f") return;
+		if (!this.container.isOpened() || !this.isWorkAllowed()) return;
 		num = num || 1;
 		var pages = this.pages();
 		if (num > pages) num = pages;

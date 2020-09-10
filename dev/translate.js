@@ -24,8 +24,8 @@ Translation.addTranslation("Detector", {"de":"Detektor","es":"Detector","fr":"De
 Translation.addTranslation("Destructor", {"de":"Destruktor","es":"Destructor","fr":"Destructeur","ko":"파괴기","nl":"Destructor","pt":"Destruidor","ru":"Разрушитель","zh":"破坏面板"});
 Translation.addTranslation("Constructor", {"de":"Konstruktor","es":"Constructor","fr":"Constructeur","ko":"설치기","nl":"Constructor","pt":"Construtor","ru":"Строитель","zh":"成型面板"});
 Translation.addTranslation("Relay", {"de":"Relais","es":"Relé","fr":"Relais","ko":"중계기","nl":"Relais","pt":"Retransmissor","ru":"Реле","zh":"继电器"});
-Translation.addTranslation("Interface Import", {"de":"Importschnittstelle","es":"Interfaz de Entrada","fr":"Interface d'import","ko":"인터페이스 입력","nl":"Interface Import","pt":"Importação da Interface","ru":"Интерфейс импорта","zh":"输入端"});
-Translation.addTranslation("Interface Export", {"de":"Exportschnittstelle","es":"Interfaz de Salida","fr":"Interface d'export","ko":"인터페이스 출력","nl":"Interface Export","pt":"Exportação da Interface","ru":"Интерфейс экспорта","zh":"输出端"});
+Translation.addTranslation("Interface Import", {"de":"Importschnittstelle","es":"Interfaz de Entrada","fr":"Interface d'import","ko":"인터페이스 입력","nl":"Interface Import","pt":"Importação da Interface","ru":"Интерфейс Импорта","zh":"输入端"});
+Translation.addTranslation("Interface Export", {"de":"Exportschnittstelle","es":"Interfaz de Salida","fr":"Interface d'export","ko":"인터페이스 출력","nl":"Interface Export","pt":"Exportação da Interface","ru":"Интерфейс Экспорта","zh":"输出端"});
 Translation.addTranslation("Crafting Monitor", {"de":"Fertigungsmonitor","es":"Monitor de fabricación","fr":"Moniteur de craft","ko":"조합 모니터","nl":"Crafting Monitor","pt":"Monitor de Fabricações","ru":"Монитор создания","zh":"合成监控处理器"});
 Translation.addTranslation("Wireless Crafting Monitor", {"de":"Mobile Fertigungskonsole","es":"Monitor Remoto de Fabricación","fr":"Moniteur de craft sans-fil","ko":"무선 조합 모니터","pt":"Monitor de Fabricações Wireless","ru":"Беспроводной монитор создания","zh":"无线合成监控处理器"});
 Translation.addTranslation("Requested", {"de":"angefragt","ru":"Требует","zh":"需要"});

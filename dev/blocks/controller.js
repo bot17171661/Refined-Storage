@@ -64,15 +64,15 @@ Block.registerPlaceFunction("RS_controller", function (coords, item, block) {
 	var relBlock = World.getBlock(coords.x, coords.y, coords.z);
 	if (relBlock.id != 0 && relBlock.id != 9 && relBlock.id != 11) return;
 	World.setBlock(coords.x, coords.y, coords.z, item.id, item.data);
-	var tile = World.addTileEntity(coords.x, coords.y, coords.z);
+	var tile = World.addTileEntity(coords.x, coords.y, coords.z) || World.getTileEntity(coords.x, coords.y, coords.z);
 	var energy = 0;
-	if(item.data == 3 && tile.data){
+	if(item.data == 3 && tile && tile.data){
 		tile.data.isCreative = true;
 		tile.data.energy = Config.controller.energyCapacity;
 		//tile.setActive(true);
 		return;
 	}
-	if (item.extra && item.extra.getInt('energy') && tile.data) {
+	if (item.extra && item.extra.getInt('energy') && tile && tile.data) {
 		energy = item.extra.getInt('energy');
 		tile.data.energy = energy;
 	}
@@ -404,8 +404,16 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				just_items_map_extra: {},
 				items_map: [],
 				items: [],
+				openedGrids: [],
 				storage: 0,
 				stored: 0,
+				refreshOpenedGrids: function(){
+					for(var i in this.openedGrids){
+						var __coords = this.openedGrids[i];
+						var tile = World.getTileEntity(__coords.x, __coords.y, __coords.z);
+						tile.data.refreshCurPage = true;
+					}
+				},
 				updateItems: function(){
 					var diskDrives = searchBlocksInNetwork(this.net_id, BlockID['diskDrive']);
 					var disk_map = [];
@@ -463,6 +471,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					this.stored = stored;
 					this.just_items_map = just_items_map;
 					this.just_items_map_extra = just_items_map_extra;
+					this.refreshOpenedGrids();
 					//this.disk_items_map = disk_items_map;
 				},
 				itemCanBePushed: function(item, count){
@@ -545,7 +554,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					if((index = this.items_map.indexOf(itemUid)) != -1){
 						for(var i in this.disk_map){
 							for(var k in this.disk_map[i]){
-								if(count == 0 || this.storage - this.stored == 0) return count;
+								if(count == 0 || this.storage - this.stored == 0){
+									this.refreshOpenedGrids();
+									return count;
+								};
 								if(disk_item = this.disk_map[i][k].items[itemUid]){
 									var freeSpace = this.disk_map[i][k].storage - this.disk_map[i][k].items_stored;
 									if(freeSpace == 0) continue;
@@ -560,6 +572,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 										this.stored += count;
 										this.disk_map[i][k].items_stored += count;
 										disk_item.count += count;
+										this.refreshOpenedGrids();
 										return 0;
 									}
 								};
@@ -593,7 +606,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					//this.stored += count1;
 					for(var i in this.disk_map){
 						for(var k in this.disk_map[i]){
-							if(count == 0 || this.storage - this.stored == 0) return count;
+							if(count == 0 || this.storage - this.stored == 0) {
+								this.refreshOpenedGrids();
+								return count;
+							}
 							if(!this.disk_map[i][k]) continue;
 							var freeSpace = this.disk_map[i][k].storage - this.disk_map[i][k].items_stored;
 							if(freeSpace == 0) continue;
@@ -618,11 +634,13 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									name: item.name
 								}
 								this.disk_map[i][k].items_stored += count;
+								this.refreshOpenedGrids();
 								return 0;
 							}
 						}
-					}
+					};
 					//}
+					this.refreshOpenedGrids();
 				},
 				itemCanBeDeleted: function(item, count){
 					count = count || item.count;
@@ -657,6 +675,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 										this.stored -= disk_item.count;
 										this.disk_map[i][k].items_stored -= disk_item.count;
 										delete this.disk_map[i][k].items[itemUid];
+										this.refreshOpenedGrids();
 										return 0;
 									}
 								}
@@ -665,7 +684,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							this.items[num].count -= count1;
 							for(var i in this.disk_map){
 								for(var k in this.disk_map[i]){
-									if(count == 0 || this.stored == 0) return count;
+									if(count == 0 || this.stored == 0) {
+										this.refreshOpenedGrids();
+										return count;
+									};
 									if(!this.disk_map[i][k] || !this.disk_map[i][k].items) continue;
 									if(disk_item = this.disk_map[i][k].items[itemUid]){
 										if(count >= disk_item.count){
@@ -677,16 +699,19 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 											this.stored -= count;
 											this.disk_map[i][k].items_stored -= count;
 											disk_item.count -= count;
+											this.refreshOpenedGrids();
 											return 0;
 										}
 									};
 								}
 							}
+							this.refreshOpenedGrids();
 							return count;
 						}
 					} else {
 						alert('Hey, are you doing something wrong');
 					}
+					this.refreshOpenedGrids();
 				}
 			}
 			Network.push(_data);
@@ -706,6 +731,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	updateControllerNetwork: function(_first){
+		//alert('Controller network update');
 		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, this.data.isActive/* , function(coords, block){
 			if(block.id == BlockID.RS_controller/*  && cts(this) != cts(coords) ){
 				alert('WIY WIY WIY WIY');
@@ -755,7 +781,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	moveCur: function(event, lite){
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened() && !lite) this.moveCurToPage(0);
 			return;
 		}
@@ -809,7 +835,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	moveCurToPage: function (page) {
 		if (!this.container.isOpened()) return;
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) {
+		if (!this.isWorkAllowed()) {
 			if (this.container.isOpened()) {
 				var content = this.container.getGuiContent();
 				content.elements["slider_button"].y = content.elements["slider_button"].start_y;
@@ -994,6 +1020,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	destroy: function () {
+		for(var i = 0; i < 4; i++)this.container.clearSlot('slot' + i);
 		if (this.data.NETWORK_ID != "f" && Network[this.data.NETWORK_ID]) {
 			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 			//var str = this.x + ',' + this.y + ',' + this.z;

@@ -287,8 +287,15 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	getTextItemsWidth: function(){
 		return 0;
 	},
+    /* getTransportSlots: function() {
+        return {
+            input: ["slot0", "slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7"],
+            //output: ["slot"]
+        };
+    }, */
 	post_init: function(){
 		if(!this.data.disks_percents)this.data.disks_percents = [];
+		this.data.iinit = true;
 		var elementIns = diskDriveGUI.getWindow('main').getContentProvider().elementMap.get('items');
 		var clazz = elementIns.getClass();
 		var field = clazz.getDeclaredField("textBounds");
@@ -314,7 +321,6 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			this.refreshModel();
 			this.data.refreshModel = false;
 		}
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) return;
 		var storage = 0;
 		var disks = 0;
 		var stored = 0;
@@ -335,7 +341,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			stored += disk_data.items_stored;
 			this.data.disks_percents[i] = diskPercent;
 		}
-		if(this.data.disks != disks || this.data.storage != storage || this.data.stored != stored) Network[this.data.NETWORK_ID].info.updateItems();
+		if((this.isWorkAllowed()) && (this.data.disks != disks || this.data.storage != storage || this.data.stored != stored)) Network[this.data.NETWORK_ID].info.updateItems();
 		this.data.disks = disks;
 		this.data.storage = String(storage);
 		this.data.stored = stored;
@@ -346,8 +352,13 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			var element = this.container.getElement('items');
 			if(element)element.setPosition(Math.max(elementsGUI_dd['items'].start_x - this.getTextItemsWidth()/2, elementsGUI_dd['scale'].x), elementsGUI_dd['items'].y);
 		}
+		//if (!this.isWorkAllowed()) return;
 	},
 	post_update_network: function(net_id){
+		if(this.data.iinit && this.isWorkAllowed()){
+			Network[this.data.NETWORK_ID].info.updateItems();
+			this.data.iinit = false;
+		}
 	},
 	refreshModel: function(){
 		var disks_data = [];
@@ -363,7 +374,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		mapDisks(this, this.data.block_data, disks_data, this.data.isActive);
 	},
 	getItems: function () {
-		if (this.data.NETWORK_ID == "f" || !this.data.isActive) return {};
+		if (!this.isWorkAllowed()) return {};
 		var items = {};
 		for (var i = 0; i < 8; i++) {
 			var item2 = this.container.getSlot('slot' + i);
@@ -383,4 +394,20 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	},
 	searchItem: function (item) {
 	}
-})
+});
+
+StorageInterface.createInterface(BlockID.diskDrive, {
+	slots: {
+		"slot0": {input: true},
+		"slot1": {input: true},
+		"slot2": {input: true},
+		"slot3": {input: true},
+		"slot4": {input: true},
+		"slot5": {input: true},
+		"slot6": {input: true},
+		"slot7": {input: true}
+	},
+	isValidInput: function(item){
+		return !!Disk.items[item.id];
+	}
+});
