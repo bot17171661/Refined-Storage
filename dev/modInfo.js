@@ -193,8 +193,10 @@
             x: 0, 
             y: 0, 
             z: 10, 
-            scale: 14, 
-            bitmap: controllerIconAnimWithoutShadow
+            //scale: 14, 
+            width: 224,
+            height: 224,
+            bitmap: FileTools.ReadImage(__dir__ + 'mod_icon.png')//controllerIconAnimWithoutShadow
         },
         'modName': {
             type: "text",
@@ -535,13 +537,16 @@
             }
         }
         var descrText = Translation.translate(changelogTexts[_id]);
-        var last_sim = 0;
         var symbolsLength = 50;
-		if(descrText.length > symbolsLength)for (var i = 0; i < Math.trunc(descrText.length / symbolsLength); i++) {
-            var indexOf = descrText.substr(last_sim, symbolsLength).lastIndexOf(" ");
-			descrText = setCharAt(descrText, indexOf + last_sim, "\n");
-            last_sim += indexOf;
-		}
+		descrText = descrText.split('\n').map(function(value){
+            var last_sim = 0; 
+            if(value.length > symbolsLength)for (var i = 0; i < Math.trunc(value.length / symbolsLength); i++) {
+                var indexOf = value.substr(last_sim, symbolsLength).lastIndexOf(" ");
+                value = setCharAt(value, indexOf + last_sim, "\n");
+                last_sim += indexOf;
+            }
+            return value;
+        }).join('\n');
         changelogElements["descriptionText" + _id] = {
             type: "text",
             id: _id,

@@ -334,12 +334,12 @@ var craftingGridGUI = new UI.StandartWindow({
 });
 GUIs.push(craftingGridGUI);
 
-var __elementMap_ = craftingGridGUI.getWindow('main').getContentProvider().elementMap;
+/* var __elementMap_ = craftingGridGUI.getWindow('main').getContentProvider().elementMap;
 for(var i = 0; i < _elementsGUI_craftingGrid["slots_count"]; i++){
 	var element = __elementMap_.get("slot"+i).getClass();
 	var field = element.getDeclaredField("font");
 	field.setAccessible(true);
-}
+} */
 
 var craftsInv_elements = craftingGridGUI.getWindow('inventory').getContent();
 craftsInv_elements.elements["_CLICKFRAME_"] = inv_elements.elements["_CLICKFRAME_"];

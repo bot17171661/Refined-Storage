@@ -178,13 +178,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 								item: item
 							}
 						}
-						return
-						if(searchItem(0) && item){
-							if(tileEntity.deleteItem(item, 1) == 0) {
-								Player.addItemToInventory(item.id, 1, item.data, item.extra || null);
-								tileEntity.refreshPageFull();
-							}
-						}
+						return;
 					},
 					onLongClick: function (param1_, param2_, param3_) {
 						var tileEntity = param2_.data ? param2_ : param3_;
@@ -205,15 +199,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 								item: item
 							}
 						}
-						return
-						if(item && (((this_item = searchItem(item.id, item.data)) && this_item.extra == item.extra && this_item.count < itemMaxStack) || searchItem(0))){
-							var count = this_item && this_item.count < itemMaxStack ? Math.min(item.count, itemMaxStack - this_item.count) : Math.min(item.count, itemMaxStack);
-							alert(JSON.stringify(item) + ' : ' + count);
-							if((res = tileEntity.deleteItem(item, count)) < count) {
-								Player.addItemToInventory(item.id, count - res, item.data, item.extra || null);
-								tileEntity.refreshPageFull();
-							}
-						}
+						return;
 					}
 				},
 				size: cons + 1
@@ -440,13 +426,13 @@ var gridGUI = new UI.StandartWindow({
 });
 GUIs.push(gridGUI);
 
-var __elementMap_ = gridGUI.getWindow('main').getContentProvider().elementMap;
+/* var __elementMap_ = gridGUI.getWindow('main').getContentProvider().elementMap;
 for(var i = 0; i < _elementsGUI_grid["slots_count"]; i++){
 	var element = __elementMap_.get("slot"+i).getClass();
 	var field = element.getDeclaredField("font");
 	field.setAccessible(true);
 	//var value = field.get();
-}
+} */
 //alert(!!gridGUI.getWindow('main').getContentProvider().elementMap.get('slot0').font)
 
 var inv_elements = gridGUI.getWindow('inventory').getContent();
@@ -493,66 +479,6 @@ inv_elements.elements["_CLICKFRAME_"] = {
 		}
 	}
 }
-//gridGUI.getWindow('inventory').setContent(inv_elements);
-
-/*var main_window = gridGUI.getWindowContent('main');
-for (var i in gridGUI.getWindowNames().toArray()) {
-	devLog(i);
-	devLog(gridGUI.getWindowNames().toArray()[i]);
-}*/
-
-//var group_grid = new UI.WindowGroup();
-//group_grid.addWindowInstance("main", gridGUI); ��� ����� ��������� ��� gridGUI;
-/*for (var i in group_grid) {
-	devLog(i);
-}
-devLog('---------------------------------------------------------------------------------------------------------------------->');
-for (var i in gridGUI) {
-	devLog(i);
-}*/
-
-/*var sup_gridGUI_elements = {};
-(function () {
-	//var interval;
-	var x = 0;//650;
-	var asd = 0;
-	var cons = 60;
-	for (var k = 0; k < 10; k++) {
-		var y = 0;//UI.getScreenHeight() / 2 - 60 * 4 / 2 - 50;
-		for (var i = 0; i < 50; i++) {
-			sup_gridGUI_elements['slot' + asd] = {
-				type: "slot",
-				x: x,
-				y: y,
-				isValid: function (id, count, data, container) {
-					devLog(id + " : " + count + " : " + data + " : " + extra);
-					return true;
-				}
-			}
-			asd++;
-			y += cons;
-		}
-		x += cons;
-	}
-})();
-
-var sup_gridGUI = new UI.Window({
-	location: {
-		x: 500,
-		y: 100,
-		width: 400,
-		height: 400,
-		scrollX: 400,
-		scrollY: 50*60
-	},
-	params: {},
-	drawing: [{
-		type: "color",
-		color: android.graphics.Color.TRANSPARENT
-	}],
-	elements: sup_gridGUI_elements
-});
-gridGUI.addWindowInstance("items", sup_gridGUI);*/
 function least_sort(a, b) { return a - b; };
 
 function error(message) {
@@ -596,7 +522,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		this.data.textSearch = false;
 		if (this.container.isOpened()) return true;
 		this.container.openAs(gridGUI);
-		alert(this.data.NETWORK_ID + ' : ' + this.data.isActive);
+		//alert(this.data.NETWORK_ID + ' : ' + this.data.isActive);
 		var ths = this;
 		setTimeout(function(){
 			ths.items();

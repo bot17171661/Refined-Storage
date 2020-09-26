@@ -379,6 +379,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(this.data.isActive == state) return;
 		if (this.pre_setActive) if(this.pre_setActive(state)) return;
 		if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return;
+		if(state && this.data.energy < this.data.usage) return;
 		if(state == false || (forced || this.data.allowSetIsActive != false)){
 			this.data.isActive = state;
 			if(this.data.NETWORK_ID != "f")Network[this.data.NETWORK_ID][this.coords_id()].isActive = state
@@ -722,7 +723,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				ths.updateNetMap();
 				ths.setActive(ths.data.energy > ths.data.usage);
 				ths.refreshModel();
-			},1)
+			},2);
 		}
 	},
 	updateItems: function(){
