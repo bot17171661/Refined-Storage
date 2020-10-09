@@ -78,56 +78,126 @@ Block.registerPlaceFunction("RS_controller", function (coords, item, block) {
 	}
 });
 var elementsGUI_controller = {};
-var controller_other_data = {};
+var controller_other_data = {
+	net_map:{},
+	isActive: false,
+	max_y: 0,
+	lastPage: -1
+};
+var controllerSwitchPage = function(num, container, data, ignore){
+	/* var asd = Object.assign(data);
+	asd.networkData = null;
+	alert(num + ' : ' + JSON.stringify(asd)); */
+	var uiAdapter = container.getUiAdapter();
+	if(!data.isActive){
+		for (var i = 0; i < 4; i++) {
+			container.clearSlot("slot" + i);
+			/* container.setText('block_info' + i, '');
+			container.setText('block_count' + i, '');
+			container.setText('block_energy_use' + i, ''); */
+			uiAdapter.setBinding('block_info' + i, 'text', '');
+			uiAdapter.setBinding('block_count' + i, 'text', '');
+			uiAdapter.setBinding('block_energy_use' + i, 'text', '');
+		}
+		return false;
+	}
+	num = num || 1;
+	var aray_net_map = Object.keys(data.net_map);
+	var pages = controllerFuncs.getPages(aray_net_map.length);
+	num = Math.max(1, Math.min(num, pages)) - 1;
+	//if(pages <= 2) num = 0;
+	//if(num >= pages - 1) num = pages - 2;
+	if(num == data.lastPage && !ignore) return false;
+	data.lastPage = num;
+	//alert('okay');
+	if(aray_net_map.length == 0){
+		for (var i = 0; i < 4; i++) {
+			container.clearSlot("slot" + i);
+			/* container.setText('block_info' + i, '');
+			container.setText('block_count' + i, '');
+			container.setText('block_energy_use' + i, ''); */
+			uiAdapter.setBinding('block_info' + i, 'text', '');
+			uiAdapter.setBinding('block_count' + i, 'text', '');
+			uiAdapter.setBinding('block_energy_use' + i, 'text', '');
+		}
+	} else {
+		for (var i = num * 2; i < num * 2 + 4; i++) {
+			var a = i - (num * 2);
+			var item = aray_net_map[i] ? data.net_map[aray_net_map[i]] : {};
+			var _id = item.id ? Network.serverToLocalId(item.id) : 0;
+			//alert('Text and slots updated');
+			container.setSlot("slot" + a, _id, 1, item.data || 0, item.extra || null);
+			var name = item.id ? Item.getName(_id, item.data || 0).split('\n')[0] : '';
+			if(name.length > controller_other_data['max_sym']) name = name.substr(0, controller_other_data['max_sym'] - 1) + '...';
+			/* container.setText('block_info' + a, name);
+			container.setText('block_count' + a, _id ? item.count + 'x' : '');
+			container.setText('block_energy_use' + a, _id ? item.energy_use + ' FE/t' : ''); */
+			uiAdapter.setBinding('block_info' + a, 'text', name);
+			uiAdapter.setBinding('block_count' + a, 'text', _id ? item.count + 'x' : '');
+			uiAdapter.setBinding('block_energy_use' + a, 'text', _id ? item.energy_use + ' FE/t' : '');
+		}
+	}
+	return true;
+}
 function initControllerElements() {
 	var moving = false;
 	var swipe_y;
 	var swipe_sum = 0;
 	var max_y = 0;
+
 	elementsGUI_controller["click_frame"] = {
 		type: "frame",
-		x: -100,
-		y: -100,
-		z: -100,
-		width: 1200,
-		height: UI.getScreenHeight() + 200,
+		x: 0,
+		y: 0,
+		z: -50,
+		width: 1000,
+		height: UI.getScreenHeight(),
 		bitmap: "empty",
 		scale: 1,
 		onTouchEvent: function (element, event) {
-			var tile = element.window.getContainer().tileEntity;
-			var content = element.window.getContainer().getGuiContent();
+			var content = {elements:elementsGUI_controller};/* element.window.getContent(); *///getContainer().getGuiContent();
+			var itemContainer = element.window.getContainer().getParent();
 			if (event.type == "DOWN" && !swipe_y && event.x > content.elements["mesh"].x && event.x < (content.elements["mesh"].x + content.elements["mesh"].width) && event.y > content.elements["mesh"].y && event.y < (content.elements["mesh"].y + content.elements["mesh"].height)) {
 				swipe_y = event.y;
 			} else if (swipe_y && event.type == "MOVE") {
-				var distance = Math.sqrt(Math.pow(event.y - swipe_y, 2));
+				var distance = Math.abs(event.y - swipe_y);
+				function moveSwitchPage_(_n){
+					_n = (_n ? 1 : -1);
+					var pages = controllerFuncs.getPages(Object.keys(controller_other_data.net_map).length);
+					if(!controllerSwitchPage(controller_other_data.lastPage + _n, itemContainer, controller_other_data)) return;
+					var ___y = controllerFuncs.getCoordsFromPage(controller_other_data.lastPage + _n, pages);
+					element.window.getContentProvider().elementMap.get("slider_button").setPosition(elementsGUI_controller['slider_button'].x, ___y);
+				}
 				if (distance > 7) {
-					if (event.y > swipe_y) tile.switchFullPage(tile.data.page - 1);
-					if (event.y < swipe_y) tile.switchFullPage(tile.data.page + 1);
-					tile.data.page_switched = true;
+					if (event.y > swipe_y) moveSwitchPage_(false);
+					if (event.y < swipe_y) moveSwitchPage_(true);
 					swipe_sum = 0;
 				} else {
 					swipe_sum += distance;
 					if (swipe_sum > 15) {
-						if (event.y > swipe_y) tile.switchFullPage(tile.data.page - 1);
-						if (event.y < swipe_y) tile.switchFullPage(tile.data.page + 1);
-						tile.data.page_switched = true;
+						if (event.y > swipe_y) moveSwitchPage_(false);
+						if (event.y < swipe_y) moveSwitchPage_(true);
 						swipe_sum = 0;
 					}
 				}
 				swipe_y = event.y;
 			} else if (swipe_y && (event.type == "UP" || event.type == "CLICK")) {
-				tile.data.page_switched = false;
 				swipe_y = false;
 			}
 			if (!moving) return;
 			event.y -= content.elements["slider_button"].scale * 15 / 2;
 			if (event.type != 'UP' && event.type != "CLICK") {
-				content.elements['slider_button'].y = Math.max(Math.min(event.y, max_y), content.elements["slider_button"].start_y);
-				tile.moveCur(event, true);
+				var page = controllerFuncs.getPageFromCoords(event, controllerFuncs.getPages(Object.keys(controller_other_data.net_map).length));
+				controllerSwitchPage(page, itemContainer, controller_other_data);
+				element.window.getContentProvider().elementMap.get("slider_button").setPosition(content.elements['slider_button'].x, Math.max(Math.min(event.y, max_y), content.elements["slider_button"].start_y));
 			}
 			if (event.type == "UP" || event.type == "CLICK") {
 				moving = false;
-				tile.moveCur(event);
+				var pages = controllerFuncs.getPages(Object.keys(controller_other_data.net_map).length);
+				var page = controllerFuncs.getPageFromCoords(event, pages);
+				controllerSwitchPage(page, itemContainer, controller_other_data);
+				var ___y = controllerFuncs.getCoordsFromPage(page, pages);
+				element.window.getContentProvider().elementMap.get("slider_button").setPosition(elementsGUI_controller['slider_button'].x, ___y);
 			}
 		}
 	}
@@ -264,12 +334,15 @@ function initControllerElements() {
 		bitmap: "slider",
 		scale: 1,
 		onTouchEvent: function (element, event) {
-			var tile = element.window.getContainer().tileEntity;
+			//var itemContainer = element.window.getContainer().getParent();
 			if (event.type == 'DOWN') {
 				moving = true;
 			}
 			if (event.type == 'CLICK') {
-				tile.moveCur(event);
+				var pages = controllerFuncs.getPages(Object.keys(controller_other_data.net_map).length);
+				var page = controllerFuncs.getPageFromCoords(event, pages);
+				var ___y = controllerFuncs.getCoordsFromPage(page, pages);
+				element.window.getContentProvider().elementMap.get("slider_button").setPosition(elementsGUI_controller['slider_button'].x, ___y);
 			}
 		}
 	}
@@ -293,13 +366,10 @@ function initControllerElements() {
 		bitmap2: 'RS_empty_button_pressed',
 		scale: mesh_height*0.17/20,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				if(tileEntity.data.redstone_mode == undefined) tileEntity.data.redstone_mode = 0;
-				tileEntity.data.redstone_mode = tileEntity.data.redstone_mode >= 2 ? 0 : tileEntity.data.redstone_mode + 1;
-				elementsGUI_controller["image_redstone"].bitmap = 'redstone_GUI_' + tileEntity.data.redstone_mode;
-				tileEntity.refreshRedstoneMode();
+			onClick: function (itemContainerUiHandler, container, element) {
+				container.sendEvent("updateRedstoneMode", {});
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, container, element) {
 			}
 		}
 	}
@@ -313,6 +383,44 @@ function initControllerElements() {
 		bitmap: "redstone_GUI_0",
 		scale: elementsGUI_controller["redstone_button"].scale*20/16,
 	}
+	//alert(SyncedNetworkData);
+	/* elementsGUI_controller["current_text_mode"] = 0;
+	elementsGUI_controller["testtext"] = {
+		type: "button",
+		x: elementsGUI_controller["redstone_button"].x,
+		y: elementsGUI_controller["redstone_button"].y - (20 * elementsGUI_controller["redstone_button"].scale) - settings_cons,
+		bitmap: 'RS_empty_button',
+		bitmap2: 'RS_empty_button_pressed',
+		scale: mesh_height*0.17/20,
+		clicker: {
+			onClick: function (itemContainerUiHandler, container, element) {
+				alert(container.getNetworkEntity().getTarget());
+				if(elementsGUI_controller["current_text_mode"]++ >= 5)elementsGUI_controller["current_text_mode"] = 0;
+				for(var i = 0; i <= 5; i++){
+					if(i != elementsGUI_controller["current_text_mode"]){
+						elementsGUI_controller["test_text_element" + i] = {text: (elementsGUI_controller["test_text_element" + i] ? elementsGUI_controller["test_text_element" + i].text : '')};
+					} else {
+						elementsGUI_controller["test_text_element" + i] = {
+							type: "text",
+							x: elementsGUI_controller["testtext"].x + (20 * elementsGUI_controller["redstone_button"].scale) + 20,
+							y: elementsGUI_controller["testtext"].y,
+							z: 10,
+							text: (elementsGUI_controller["test_text_element" + i] ? elementsGUI_controller["test_text_element" + i].text : ''),//i + "123",
+							font: {
+								color: android.graphics.Color.DKGRAY,
+								shadow: 0.15,
+								size: 18
+							}
+						}
+					}
+				}
+				element.window.getContentProvider().refreshElements();
+			},
+			onLongClick: function (itemContainerUiHandler, container, element) {
+			}
+		}
+	} */
+	controller_other_data.max_y = max_y;
 };
 initControllerElements();
 testButtons(elementsGUI_controller, initControllerElements);
@@ -334,6 +442,54 @@ const CONTROLLER_GUI = new UI.StandartWindow({
 	elements: elementsGUI_controller
 });
 GUIs.push(CONTROLLER_GUI);
+
+var controllerFuncs = {
+	getNewTexture: function (energyScaled, isActive) {
+		if (energyScaled <= 0 || !isActive) {
+			return 'controller_off';
+		} else if (energyScaled <= 20) {
+			return 'controller_nearly_off';
+		}
+		return 'controller_on';
+	},
+	getEnergyScaled: function (scale, energy) {
+		return Math.floor(energy / Config.controller.energyCapacity * scale);
+	},
+	getPages: function(_length){
+		if(_length == 0) return 1;
+		_length = Math.ceil(_length / 2);
+		return _length;//Math.max(_length - Math.min(_length, 4) + 1, 0) || 1;
+	},
+	getPageFromCoords: function(_coords, pages){
+		var max_y = controller_other_data.max_y;
+		var interval = (pages - 1) > 0 ? (max_y - elementsGUI_controller["slider_button"].start_y) / (pages - 1) : 0;
+		function __getY(i) {
+			return ((interval * i) + elementsGUI_controller["slider_button"].start_y);
+		}
+		var least_dec = 10001;
+		var finish_i = 0;
+		for (var i = 0; i < pages; i++) {
+			var dec = Math.abs(Math.round(_coords.y - __getY(i)));
+			if (dec < least_dec) {
+				least_dec = dec;
+				finish_i = i;
+			}
+		};
+		var page = finish_i;
+		return page + 1;
+	},
+	getCoordsFromPage: function(page, pages){
+		var max_y = controller_other_data.max_y;
+		var interval = (pages - 1) > 0 ? (max_y - elementsGUI_controller["slider_button"].start_y) / (pages - 1) : 0;
+		function __getY(i) {
+			return ((interval * i) + elementsGUI_controller["slider_button"].start_y);
+		}
+		if (page > pages) page = pages;
+		if (page < 1) page = 1;
+		return __getY(page - 1);
+	}
+}
+
 RefinedStorage.createTile(BlockID.RS_controller, {
 	defaultValues: {
 		NETWORK_ID: "f",
@@ -341,13 +497,15 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		usage: 0,
 		lastTexture: '',
 		page_switched: false,
-		//isActive: null,
 		activePost: false,
 		net_map: {},
 		page: 1,
 		redstone_mode: 0,
-		isCreative: false
+		isCreative: false,
+		networkDataUpdate: false,
+		containerUpdate: false
 	},
+	useNetworkItemContainer: true,
 	created: function () {
 		while (controller = searchController(this)) {
 			for (var i in sides) {
@@ -358,9 +516,9 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				var bck = World.getBlock(coordss.x, coordss.y, coordss.z);
 				if (RS_blocks.indexOf(bck.id) != -1) {
 					if(bck.id == BlockID.RS_cable){
-						for(var i in Network){
-							if(Network[i][cts(coordss)]){
-								delete Network[i][cts(coordss)];
+						for(var i in RSNetworks){
+							if(RSNetworks[i][cts(coordss)]){
+								delete RSNetworks[i][cts(coordss)];
 								World.destroyBlock(coordss.x, coordss.y, coordss.z, true);
 							}
 						}
@@ -382,15 +540,19 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(state && this.data.energy < this.data.usage) return;
 		if(state == false || (forced || this.data.allowSetIsActive != false)){
 			this.data.isActive = state;
-			if(this.data.NETWORK_ID != "f")Network[this.data.NETWORK_ID][this.coords_id()].isActive = state
+			this.networkData.putBoolean('isActive', state);
+			if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID][this.coords_id()].isActive = state
 		}
 		this.refreshModel();
+		this.networkData.sendChanges();
 		if (this.post_setActive) this.post_setActive(state);
-		this.refreshPageFull();
+		this.refreshGui();
 	},
 	init: function () {
-		if (this.data.NETWORK_ID == "f" || !Network[this.data.NETWORK_ID]) {
-			this.data.NETWORK_ID = Network.length;
+		if (this.data.NETWORK_ID == "f" || !RSNetworks[this.data.NETWORK_ID]) {
+			this.data.NETWORK_ID = RSNetworks.length;
+			var controllerTile = this;
+			this.networkData.putInt('NETWORK_ID', RSNetworks.length);
 			var _data = {};
 			_data[cts(this)] = {
 				id: BlockID.RS_controller,
@@ -398,7 +560,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				isActive: false
 			}
 			_data['info'] = {
-				net_id: Network.length,
+				net_id: RSNetworks.length,
 				//disk_items_map: {},
 				disk_map: [],
 				just_items_map: {},
@@ -411,7 +573,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				refreshOpenedGrids: function(){
 					for(var i in this.openedGrids){
 						var __coords = this.openedGrids[i];
-						var tile = World.getTileEntity(__coords.x, __coords.y, __coords.z);
+						var tile = World.getTileEntity(__coords.x, __coords.y, __coords.z, controllerTile.blockSource);
 						tile.data.refreshCurPage = true;
 					}
 				},
@@ -552,6 +714,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 						}
 					}
 					return count; */
+					if(Config.dev)Logger.Log('Pushing item:  id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored + count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) - count) + ')', 'RefinedStorageDebug');
+					for(var i in _data){
+						if(_data[i].pushItemFunc)count -= _data[i].pushItemFunc(item, count) || 0;
+						if(count <= 0) return 0;
+					}
 					if((index = this.items_map.indexOf(itemUid)) != -1){
 						for(var i in this.disk_map){
 							for(var k in this.disk_map[i]){
@@ -658,6 +825,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					if(this.stored == 0) return count;
 					var itemUid = getItemUid(item);
 					var count1 = Math.min(count, this.stored);
+					if(Config.dev)Logger.Log('Deleting item:  id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored - count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) + count) + ')', 'RefinedStorageDebug');
+					for(var i in _data){
+						if(_data[i].deleteItemFunc)_data[i].deleteItemFunc(item, count);
+					}
 					if((num = this.items_map.indexOf(itemUid)) != -1){
 						if(count >= this.items[num].count){
 							this.items_map.splice(num, 1);
@@ -715,7 +886,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					this.refreshOpenedGrids();
 				}
 			}
-			Network.push(_data);
+			RSNetworks.push(_data);
 			var ths = this;
 			setTimeout(function(){
 				_data['info'].updateItems();
@@ -728,7 +899,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	updateItems: function(){
 		if(this.data.NETWORK_ID != 'f'){
-			Network[this.data.NETWORK_ID].info.updateItems();
+			RSNetworks[this.data.NETWORK_ID].info.updateItems();
 		}
 	},
 	updateControllerNetwork: function(_first){
@@ -742,180 +913,48 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		} */);
 		//set_is_active_for_blocks_net(this.data.NETWORK_ID, this.data.isActive, true);
 	},
-	getEnergyScaled: function (scale) {
-		return Math.floor(this.data.energy / Config.controller.energyCapacity * scale);
-	},
-	getNewTexture: function (energyScaled) {
-		if (energyScaled <= 0 || !this.data.isActive) {
-			return 'controller_off';
-		} else if (energyScaled <= 20) {
-			return 'controller_nearly_off';
-		}
-		return 'controller_on';
-	},
-	click: function () {
-		if(Entity.getSneaking(Player.get())) return false;
-		if (this.container.isOpened()) return true;
-		CONTROLLER_GUI.getWindow('header').getContent().drawing[2].text = this.data.isCreative ? Translation.translate("Creative Controller") : Translation.translate("Controller");
-		this.container.openAs(CONTROLLER_GUI);
-		var content = this.container.getGuiContent();
+	click: function (id, count, data, coords, player, extra) {
+		if(Entity.getSneaking(player)) return false;
+		var client = Network.getClientForPlayer(player);
+		if(!client) return true;
+		if (this.container.getNetworkEntity().getClients().contains(client)) return true;
+		this.container.openFor(client, "main");
+		var _data = {
+			name: this.networkData.getName() + '', 
+			isActive: this.data.isActive, 
+			capacity: this.getCapacity(), 
+			redstone_mode: this.data.redstone_mode, 
+			usage: this.data.usage, 
+			energy: this.data.energy, 
+			isCreative: this.data.isCreative, 
+			net_map: this.data.net_map
+		};
+		//alert(JSON.stringify(_data));
+		this.container.sendEvent(client, "openGui", _data); 
 		this.container.setScale('scale', this.data.energy / this.getCapacity());
 		this.container.setText('usage', Translation.translate('Usage')+": " + this.data.usage + " FE/t");
 		this.container.setText('storage', this.data.energy + '/' + this.getCapacity() + ' FE');
-		content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (this.data.redstone_mode || 0);
-		//alert(JSON.stringify(content));
-		//content.standart.header.text.text = this.data.isCreative ? Translation.translate("Creative Controller") : Translation.translate("Controller");
-		this.switchFullPage(1);
+		this.container.sendChanges();
 		return true;
 	},
 	post_setActive: function(state){
-		//alert(state);
 		if(!state){
 			this.data.net_map = {};
 			this.data.usage = 0;
 			this.container.setText('usage', Translation.translate('Usage') + ": 0 FE/t");
+			this.container.sendChanges();
 		} else {
 			this.updateNetMap();
 		}
-		//alert(state);
-		set_is_active_for_blocks_net(this.data.NETWORK_ID, state, true);
-	},
-	moveCur: function(event, lite){
-		if (!this.container.isOpened()) return;
-		if (!this.isWorkAllowed()) {
-			if (this.container.isOpened() && !lite) this.moveCurToPage(0);
-			return;
-		}
-		var content = this.container.getGuiContent();
-		var max_y = (content.elements["slider_frame"].y + content.elements["slider_frame"].height) - 7 - content.elements["slider_button"].scale * 15;
-		var pages = this.pages();
-		//alert(pages);
-		if (pages <= 1) {
-			content.elements["slider_button"].y = content.elements["slider_button"].start_y;
-			//this.switchPage(this.data.page);
-			//alert('pages = 0');
-			return;
-		}
-		var interval = (max_y - content.elements["slider_button"].start_y) / pages;
-		function __getY(i) {
-			return ((interval * i) + content.elements["slider_button"].start_y);
-		}
-		//var mas = [];
-		var least_dec = 10001;
-		var finish_i = 0;
-		for (var i = 0; i <= pages; i++) {
-			//mas.push(Math.abs(Math.round(event.y - __getY(i))));
-			var dec = Math.abs(Math.round(event.y - __getY(i)));
-			if (dec < least_dec) {
-				least_dec = dec;
-				finish_i = i;
-			}
-			//content.drawing[i] = { type: "line", x1: content.elements["slider_frame"].x - 10, y1: __getY(i), x2: content.elements["slider_frame"].x + content.elements["slider_frame"].width + 10, y2: __getY(i) }
-		};
-		//var mas2 = mas.concat([]);
-		//mas.sort(least_sort);
-		var page = finish_i;//mas2.indexOf(mas[0]);
-		//devLog(mas2 + ' | ' + mas + ' | ' + page + ' | ' + pages + ' | ' + interval + ' | ' + this.items().length);
-		//alert(max_y)
-		//for (var i = 0; i < pages; i++)alert(__getY(i));
-		if (page >= pages) page = pages - 1;
-		if (!lite) this.moveCurToPage(page);
-		this.switchPage(page + 1);
+		set_is_active_for_blocks_net(this.data.NETWORK_ID, state, true, this.blockSource);
 	},
 	pages: function () {
-		if (this.container.isOpened() && this.data.NETWORK_ID != "f" && this.data.isActive) {
-			//var content = this.container.getGuiContent();
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext() && this.data.NETWORK_ID != "f" && this.data.isActive) {
 			var aray_net_map = Object.keys(this.data.net_map);
-			if(aray_net_map.length == 0) return 1;
-			//return Math.ceil(temp_data[this.controller_id()].items.length / content.elements.slots_count) || 1;
-			var _length = Math.ceil(aray_net_map.length / 4);
-			return Math.max(_length - Math.min(_length, 4) + 1, 0) || 1;
+			return controllerFuncs.getPages(aray_net_map.length);
 		} else {
 			return 1;
 		}
-	},
-	moveCurToPage: function (page) {
-		if (!this.container.isOpened()) return;
-		if (!this.isWorkAllowed()) {
-			if (this.container.isOpened()) {
-				var content = this.container.getGuiContent();
-				content.elements["slider_button"].y = content.elements["slider_button"].start_y;
-			}
-			return;
-		}
-		var content = this.container.getGuiContent();
-		var max_y = (content.elements["slider_frame"].y + content.elements["slider_frame"].height) - 7 - content.elements["slider_button"].scale * 15;
-		var pages = this.pages();
-		var interval = (max_y - content.elements["slider_button"].start_y) / pages;
-		function __getY(i) {
-			return ((interval * i) + content.elements["slider_button"].start_y);
-		}
-		if (page > pages) page = pages;
-		if (page < 0) page = 0;
-		content.elements["slider_button"].y = __getY(page);
-		//this.container.setBinding("slider_button", 'y', __getY(page));
-		//this.container.getWindow().getElements().get("slider_button").onBindingUpdated("y", __getY(page));
-	},
-	switchPage: function (num) {
-		if (!this.container.isOpened() || this.data.NETWORK_ID == "f") return;
-		var content = this.container.getGuiContent();
-		//alert('Page update : ' + this.data.isActive)
-		if(!this.data.isActive){
-			for (var i = 0; i < 4; i++) {
-				this.container.clearSlot("slot" + i);
-				content.elements["slot" + i].z = -10;
-				this.container.setText('block_info' + i, '');
-				this.container.setText('block_count' + i, '');
-				this.container.setText('block_energy_use' + i, '');
-			}
-			return;
-		}
-		num = num || 1;
-		var pages = this.pages();
-		num = Math.max(1, Math.min(num, pages)) - 1;
-		var container = this.container;
-		var aray_net_map = Object.keys(this.data.net_map);
-		if(aray_net_map.length == 0){
-			for (var i = 0; i < 4; i++) {
-				//content.elements["slot" + i].bitmap = "empty";
-				//content.elements["slot" + i].z = -100
-				container.clearSlot("slot" + i);
-				content.elements["slot" + i].z = -10;
-				container.setText('block_info' + i, '');
-				container.setText('block_count' + i, '');
-				container.setText('block_energy_use' + i, '');
-			}
-		} else {
-			for (var i = num * 2; i < num * 2 + 4; i++) {
-				var a = i - (num * 2);
-				var item = aray_net_map[i] ? this.data.net_map[aray_net_map[i]] : {};
-				//content.elements["slot" + a].bitmap = "classic_slot";
-				/*if(item.id)
-					content.elements["slot" + a].z = 100;
-				else
-					content.elements["slot" + a].z = -100;*/
-				content.elements["slot" + a].z = 10;
-				container.setSlot("slot" + a, item.id || 0, 1, item.data || 0, item.extra || null);
-				var name = item.id ? Item.getName(item.id, item.data || 0).split('\n')[0] : '';
-				//if(a == 0)name = '123456789123456789123456789';
-				if(name.length > controller_other_data['max_sym']) name = name.substr(0, controller_other_data['max_sym'] - 1) + '...';
-				container.setText('block_info' + a, name);
-				container.setText('block_count' + a, item.id ? item.count + 'x' : '');
-				container.setText('block_energy_use' + i, item.id ? item.energy_use + ' FE/t' : '');
-			}
-		}
-		this.data.page = num;
-	},
-	switchFullPage: function(page){
-		this.switchPage(page);
-		this.moveCurToPage(page - 1);
-	},
-	refreshPage: function () {
-		this.switchPage(this.data.page);
-	},
-	refreshPageFull: function () {
-		this.refreshPage();
-		this.moveCurToPage(this.data.page - 1);
 	},
 	getCapacity: function () {
 		return Config.controller.energyCapacity;
@@ -929,16 +968,15 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	updateNetMap: function(){
 		var usage = 0;
 		var net_map = {};
-		for (var i in Network[this.data.NETWORK_ID]) {
-			if (!Network[this.data.NETWORK_ID][i] || i == "info" || Network[this.data.NETWORK_ID][i].id == BlockID.RS_controller || !Network[this.data.NETWORK_ID][i].isActive) continue;
-			var id_ = Network[this.data.NETWORK_ID][i].id;
+		for (var i in RSNetworks[this.data.NETWORK_ID]) {
+			if (!RSNetworks[this.data.NETWORK_ID][i] || i == "info" || RSNetworks[this.data.NETWORK_ID][i].id == BlockID.RS_controller || !RSNetworks[this.data.NETWORK_ID][i].isActive) continue;
+			var id_ = RSNetworks[this.data.NETWORK_ID][i].id;
 			if(!net_map[String(id_)])
 				net_map[String(id_)] = {id: id_, energy_use: 0, count: 1};
 			else
 				net_map[String(id_)].count++;
 			if (id_ == BlockID.diskDrive) {
-				var tile = World.getTileEntity(Network[this.data.NETWORK_ID][i].coords.x, Network[this.data.NETWORK_ID][i].coords.y, Network[this.data.NETWORK_ID][i].coords.z);
-				//log(!!tile);
+				var tile = World.getTileEntity(RSNetworks[this.data.NETWORK_ID][i].coords.x, RSNetworks[this.data.NETWORK_ID][i].coords.y, RSNetworks[this.data.NETWORK_ID][i].coords.z, this.blockSource);
 				if (!tile) continue;
 				usage += EnergyUse['disk']*tile.data.disks;
 				net_map[String(id_)].energy_use += EnergyUse['disk']*tile.data.disks;
@@ -955,82 +993,66 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		var add = Math.min(amount, this.getCapacity() - this.data.energy);
 		if(!this.data.isActive && this.data.allowSetIsActive != false)this.setActive(true);
 		this.data.energy += add;
+		this.networkData.putInt('energy', this.data.energy);
+		this.data.networkDataUpdate = true;
 		return type == 'Eu' ? add / 4 : add;
 	},
 	pre_setActive: function(state){
 		if(state && this.data.energy <= 0) return true;
 	},
 	tick: function () {
-		if (this.container.isOpened()) {
-			//var content = this.container.getGuiContent();
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			this.container.setScale('scale', this.data.energy / this.getCapacity());
 			this.container.setText('storage', this.data.energy + '/' + this.getCapacity() + ' FE');
+			this.data.containerUpdate = true;
 		}
-		if(!this.data.isActive || this.data.NETWORK_ID == "f") return;
-		var usage = 0;
-		var net_map = {};
-		for (var i in Network[this.data.NETWORK_ID]) {
-			if (!Network[this.data.NETWORK_ID][i] || i == "info" || Network[this.data.NETWORK_ID][i].id == BlockID.RS_controller || !Network[this.data.NETWORK_ID][i].isActive) continue;
-			var id_ = Network[this.data.NETWORK_ID][i].id;
-			if(!net_map[String(id_)])
-				net_map[String(id_)] = {id: id_, energy_use: 0, count: 1};
-			else
-				net_map[String(id_)].count++;
-			if (id_ == BlockID.diskDrive) {
-				var tile = World.getTileEntity(Network[this.data.NETWORK_ID][i].coords.x, Network[this.data.NETWORK_ID][i].coords.y, Network[this.data.NETWORK_ID][i].coords.z);
-				//log(!!tile);
-				if (!tile) continue;
-				usage += EnergyUse['disk']*tile.data.disks;
-				net_map[String(id_)].energy_use += EnergyUse['disk']*tile.data.disks;
-			} else {
-				usage += EnergyUse[id_] || 0;
-				net_map[String(id_)].energy_use += EnergyUse[id_] || 0;
+		if(!this.data.isActive || this.data.NETWORK_ID == "f") {
+			if(this.data.containerUpdate){
+				this.container.sendChanges();
+				this.data.containerUpdate = false;
 			}
+			return;
 		}
-		this.data.net_map = net_map;
-		this.data.usage = usage;
+		this.updateNetMap();
+		var usage = this.data.usage;
 		if (this.data.energy >= usage && this.data.energy != 0){
 			if(!this.data.activePost) {
 				this.setActive(true);
-				//set_is_active_for_blocks_net(this.data.NETWORK_ID, true, true);
 				this.data.activePost = true;
 			}
-			if(Config.controller.usesEnergy && !this.data.isCreative)this.data.energy -= usage;
+			if(Config.controller.usesEnergy && !this.data.isCreative){
+				this.data.energy -= usage;
+				this.networkData.putInt('energy', this.data.energy);
+				this.data.networkDataUpdate = true;
+			}
 		} else {
 			if(this.data.activePost) {
 				this.setActive(false);
-				//set_is_active_for_blocks_net(this.data.NETWORK_ID, false, true);
 				this.data.activePost = false;
 			}
 		}
-		if (this.container.isOpened()) {
-			//var content = this.container.getGuiContent();
-			//this.container.setScale('scale', this.data.energy / this.getCapacity());
-			this.container.setText('usage', Translation.translate('Usage') + ": " + usage + " FE/t");
-			if(World.getThreadTime() % 10 == 0){
-				this.refreshPage();
-			}
-			//this.container.setText('storage', this.data.energy + '/' + this.getCapacity() + ' FE');
+		if(this.data.networkDataUpdate){
+			this.networkData.sendChanges();
+			this.data.networkDataUpdate = false;
 		}
-		this.refreshModel();
+		if(this.data.containerUpdate){
+			this.container.sendChanges();
+			this.data.containerUpdate = false;
+		}
 	},
 	refreshModel: function(){
-		var newTexture = this.getNewTexture(this.getEnergyScaled(100));
-		if (newTexture != this.data.lastTexture) {
-			RefinedStorage.mapTexture(this, newTexture);
-		}
+		this.sendPacket("refreshModel", {energy: this.data.energy, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z}});
 	},
 	destroy: function () {
-		for(var i = 0; i < 4; i++)this.container.clearSlot('slot' + i);
-		if (this.data.NETWORK_ID != "f" && Network[this.data.NETWORK_ID]) {
+		//for(var i = 0; i < 4; i++)this.container.clearSlot('slot' + i);
+		if (this.data.NETWORK_ID != "f" && RSNetworks[this.data.NETWORK_ID]) {
 			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
-			//var str = this.x + ',' + this.y + ',' + this.z;
 			set_net_for_blocks(this, 'f');
-			delete Network[this.data.NETWORK_ID];
+			delete RSNetworks[this.data.NETWORK_ID];
 		}
 		this.data.NETWORK_ID == "f";
 		if(this.data.isCreative){
-			World.drop(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, 3);
+			this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, 3, null);
 			return;
 		}
 		var extra = null;
@@ -1038,7 +1060,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			extra = new ItemExtraData();
 			extra.putInt('energy', this.data.energy);
 		}
-		var energyScaled = this.getEnergyScaled(100);
+		var energyScaled = controllerFuncs.getEnergyScaled(100, this.data.energy);
 		var block_data = 0;
 		if (energyScaled <= 0) {
 			block_data = 0;
@@ -1047,16 +1069,54 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		} else {
 			block_data = 2;
 		}
-		World.drop(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, block_data, extra);
-		//clearInterval(this.data.interval);
+		this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, block_data, extra);
+	},
+	getScreenByName: function(screenName) {
+		if(screenName == 'main')return CONTROLLER_GUI;
+	},
+	refreshGui: function(){
+		this.container.sendEvent("refreshGui", {isActive: this.data.isActive, capacity: this.getCapacity(), redstone_mode: this.data.redstone_mode, usage: this.data.usage, energy: this.data.energy, isCreative: this.data.isCreative, net_map: this.data.net_map});
+	},
+	client: {
+		events: {
+			refreshModel: function(eventData, connectedClient){
+				var newTexture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(100, eventData.energy), eventData.isActive);
+				RefinedStorage.mapTexture(eventData.coords, newTexture);
+			}
+		},
+		containerEvents: {
+			openGui: function(container, window, windowContent, eventData){
+				//Debug.m(eventData);
+				var networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
+				controller_other_data.networkData = networkData;
+				controller_other_data.net_map = eventData.net_map;
+				controller_other_data.isActive = eventData.isActive;
+				var headerWindow = window.getWindow('header')
+				headerWindow.getContent().drawing[2].text = eventData.isCreative ? Translation.translate("Creative Controller") : Translation.translate("Controller");
+				headerWindow.forceRefresh();
+				//window.getWindow('main').forceRefresh();
+				//var content = container.getWindowContent();
+				windowContent.elements["slider_button"].y = windowContent.elements["slider_button"].start_y;
+				windowContent.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
+				controllerSwitchPage(1, container, controller_other_data, true);
+			},
+			refreshGui:function(container, window, windowContent, eventData){
+				controller_other_data.net_map = eventData.net_map;
+				controller_other_data.isActive = eventData.isActive;
+				windowContent.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
+				controllerSwitchPage(controller_other_data.lastPage, container, controller_other_data, true);
+
+			}
+		}
+	},
+	containerEvents: {
+		updateRedstoneMode: function(eventData, connectedClient) {
+			if(this.data.redstone_mode == undefined) this.data.redstone_mode = 0;
+			this.data.redstone_mode = this.data.redstone_mode >= 2 ? 0 : this.data.redstone_mode + 1;
+			if(!this.refreshRedstoneMode()) this.refreshGui();
+		}
 	}
 })
 EnergyTileRegistry.addEnergyTypeForId(BlockID.RS_controller, FE);
 EnergyTileRegistry.addEnergyTypeForId(BlockID.RS_controller, EU);
 EnergyTileRegistry.addEnergyTypeForId(BlockID.RS_controller, RF);
-
-/*Block.registerPlaceFunctionForID(BlockID.RS_controller, function(coords, item, block){
-	if(World.getBlock(coords.relative.x, coords.relative.y, coords.relative.z).id != 0) return;
-	World.setBlock(coords.relative.x, coords.relative.y, coords.relative.z, item.id, item.data);
-	World.addTileEntity(coords.relative.x, coords.relative.y, coords.relative.z);
-});*/

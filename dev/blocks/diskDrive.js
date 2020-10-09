@@ -305,7 +305,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		}
 	},
 	post_setActive: function(state){
-		if(this.data.NETWORK_ID != "f")Network[this.data.NETWORK_ID].info.updateItems();
+		if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID].info.updateItems();
 	},
 	click: function () {
 		if (Entity.getSneaking(Player.get())) return false;
@@ -341,7 +341,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			stored += disk_data.items_stored;
 			this.data.disks_percents[i] = diskPercent;
 		}
-		if((this.isWorkAllowed()) && (this.data.disks != disks || this.data.storage != storage || this.data.stored != stored)) Network[this.data.NETWORK_ID].info.updateItems();
+		if((this.isWorkAllowed()) && (this.data.disks != disks || this.data.storage != storage || this.data.stored != stored)) RSNetworks[this.data.NETWORK_ID].info.updateItems();
 		this.data.disks = disks;
 		this.data.storage = String(storage);
 		this.data.stored = stored;
@@ -356,7 +356,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	},
 	post_update_network: function(net_id){
 		if(this.data.iinit && this.isWorkAllowed()){
-			Network[this.data.NETWORK_ID].info.updateItems();
+			RSNetworks[this.data.NETWORK_ID].info.updateItems();
 			this.data.iinit = false;
 		}
 	},
@@ -386,13 +386,8 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		}
 		return items;
 	},
-	pushItem: function (item) {
-	},
-	addItem: function (item, count) {
-	},
-	deleteItem: function (item, count) {
-	},
-	searchItem: function (item) {
+	pre_destroy: function(){
+		if(RSNetworks && RSNetworks[this.data.NETWORK_ID] && RSNetworks[this.data.NETWORK_ID].info)RSNetworks[this.data.NETWORK_ID].info.updateItems()
 	}
 });
 

@@ -1,6 +1,6 @@
 {
   "enabled":true,
-  "dev":false,
+  "dev":true,
   "changelogEnabled":true,
   "controller":{
     "usesEnergy":true,

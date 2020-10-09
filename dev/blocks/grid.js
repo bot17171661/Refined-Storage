@@ -420,7 +420,7 @@ var gridGUI = new UI.StandartWindow({
 		}
 	},
 
-	drawing: [],
+	drawing: [/* {type: "line", x2: 1000, y1: UI.getScreenHeight()- 60 - 70 - 50, y2: UI.getScreenHeight()- 60 - 70 - 50} */],
 
 	elements: _elementsGUI_grid
 });
@@ -548,14 +548,14 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	onWindowClose: function(){
 		if(this.data.NETWORK_ID == 'f') return;
 		var coords_id = this.coords_id();
-		Network[this.data.NETWORK_ID][coords_id].isOpenedGrid = false;
-		if((iIndex = Network[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id})) != -1) Network[this.data.NETWORK_ID].info.openedGrids.splice(iIndex, 1);
+		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = false;
+		if((iIndex = RSNetworks[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id})) != -1) RSNetworks[this.data.NETWORK_ID].info.openedGrids.splice(iIndex, 1);
 	},
 	onWindowOpen: function(){
 		if(this.data.NETWORK_ID == 'f') return;
 		var coords_id = this.coords_id();
-		Network[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
-		if(Network[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id}) == -1) Network[this.data.NETWORK_ID].info.openedGrids.push({x: this.x, y: this.y, z: this.z});
+		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
+		if(RSNetworks[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id}) == -1) RSNetworks[this.data.NETWORK_ID].info.openedGrids.push({x: this.x, y: this.y, z: this.z});
 	},
 	moveCur: function (event, lite) {
 		if (!this.container.isOpened()) return;
@@ -635,8 +635,9 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 				var item = Player.getInventorySlot(event.slot);
 				if(item.id == 0) return;
 				var count = Math.min(event.count, item.count);
-				var pushed = this.pushItem({id: item.id, count: count, data: item.data, extra: item.extra});
-				if(pushed === 0 && item.count - count == 0){
+				var pushed = this.pushItem(item, count);
+				alert(JSON.stringify(item) + ' : ' + count + ' : ' + pushed);
+				if(pushed == count){
 					Player.setInventorySlot(event.slot, 0, 0, 0);
 					this.refreshPageFull();
 				} else if(pushed < count){
@@ -652,6 +653,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 				if(item && ((emptySlots = searchItem(0, -1, true)).length > 0 || ((this_item = searchItem(item.id, item.data, false, true)) && this_item.extra == item.extra && this_item.count < itemMaxStack))){
 					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count, itemMaxStack*emptySlots.length);
 					if((res = this.deleteItem(item, count)) < count) {
+						alert(count + ' : ' + res);
 						Player.addItemToInventory(item.id, count - res, item.data, item.extra || null, false);
 						this.refreshPageFull();
 					}
@@ -721,7 +723,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 			this.items_list([]);
 			return [];
 		}
-		var items = Network[this.data.NETWORK_ID].info.items;
+		var items = RSNetworks[this.data.NETWORK_ID].info.items;
 		if(this.data.textSearch)var textSearch = new RegExp(this.data.textSearch, "i");
 		items = this.data.textSearch ? items.filter(function (value, index) {
 			if(!value.name){
@@ -742,37 +744,37 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.items;
+		return RSNetworks[this.data.NETWORK_ID].info.items;
 	},
 	originalItemsMap: function(){
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.items_map;
+		return RSNetworks[this.data.NETWORK_ID].info.items_map;
 	},
 	originalOnlyItemsMap: function(){
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.just_items_map;
+		return RSNetworks[this.data.NETWORK_ID].info.just_items_map;
 	},
 	originalOnlyItemsExtraMap: function(){
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.just_items_map_extra;
+		return RSNetworks[this.data.NETWORK_ID].info.just_items_map_extra;
 	},
 	pushItem: function (item, count) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = Network[this.data.NETWORK_ID].info.pushItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.pushItem(item, count);
 		if(this.post_pushItem)this.post_pushItem(item, count, res);
 		return res;
 	},
 	deleteItem: function (item, count) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = Network[this.data.NETWORK_ID].info.deleteItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.deleteItem(item, count);
 		if(this.post_deleteItem)this.post_deleteItem(item, count, res);
 		return res;
 	},

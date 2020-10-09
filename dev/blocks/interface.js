@@ -112,7 +112,10 @@ var elementsGUI_interface = {};
 							return name ? field.get(elementIns).description.name : field.get(elementIns);
 						}
 					}
-					if(tile.getSelectedSlot(true) == slot_id)container.setSlot(slot_id, 0, 0, 0);
+					if(tile.getSelectedSlot(true) == slot_id){
+						container.setSlot(slot_id, 0, 0, 0);
+						tile.data.importItems[importSlotsMap[selectedSlotName]] = {id:0,data:0,extra:null};
+					}
 				}
 			},
 			visual: true,
@@ -255,6 +258,12 @@ var interfaceGUI = new UI.StandartWindow({
 });
 GUIs.push(interfaceGUI);
 
+importSlotsMap = {};
+for(var asdl = 0; asdl < 9; asdl++){
+	importSlotsMap['slot_import'+asdl] = asdl;
+	importSlotsMap[asdl] = 'slot_import'+asdl;
+}
+
 var inv_elements_interfaceGUI = interfaceGUI.getWindow('inventory').getContent();
 inv_elements_interfaceGUI.elements["_CLICKFRAME_"] = {
 	type: "frame",
@@ -296,6 +305,7 @@ inv_elements_interfaceGUI.elements["_CLICKFRAME_"] = {
 				selectedSlot.data = item.data;
 				selectedSlot.extra = item.extra;
 			}
+			tile.data.importItems[importSlotsMap[selectedSlotName]] = selectedSlot;
 		}
 	}
 }
@@ -307,7 +317,8 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		ticks: 0,
 		currentSlot: 0,
 		useDamage: true,
-		useNbt: true
+		useNbt: true,
+		importItems: [{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null}]
     },
 	click: function () {
 		if(Entity.getSneaking(Player.get())) return false;
@@ -348,31 +359,30 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 	post_update_network: function(net_id){
 		if(net_id == 'f') return;
 		var ths = this;
-		Network[net_id][this.coords_id()].pushItemFunc = function(item, count){
+		RSNetworks[net_id][this.coords_id()].pushItemFunc = function(item, count){
 			return ths.pushItemFunc(item, count);
 		}
 	},
 	pushItemFunc: function(item, count){
-		item.count = count && count <= item.count ? count : item.count;
-
+		if(Config.dev)Logger.Log('Redirection item to interface: id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : ''), 'RefinedStorageDebug');
 	},
 	itemCanBePushed: function(item, count, _inverted){
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return _inverted ? count : 0;
-		var res = Network[this.data.NETWORK_ID].info.itemCanBePushed(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.itemCanBePushed(item, count);
 		return _inverted ? count - res : res;
 	},
 	pushItem: function (item, count) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = Network[this.data.NETWORK_ID].info.pushItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.pushItem(item, count);
 		if(this.post_pushItem)this.post_pushItem(item, count, res);
 		return res;
 	},
 	deleteItem: function (item, count) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = Network[this.data.NETWORK_ID].info.deleteItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.deleteItem(item, count);
 		if(this.post_deleteItem)this.post_deleteItem(item, count, res);
 		return res;
 	},
@@ -380,25 +390,25 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.items;
+		return RSNetworks[this.data.NETWORK_ID].info.items;
 	},
 	originalItemsMap: function(){
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		return Network[this.data.NETWORK_ID].info.items_map;
+		return RSNetworks[this.data.NETWORK_ID].info.items_map;
 	},
 	originalOnlyItemsMap: function(){
 		if (!this.isWorkAllowed()) {
 			return {};
 		}
-		return Network[this.data.NETWORK_ID].info.just_items_map;
+		return RSNetworks[this.data.NETWORK_ID].info.just_items_map;
 	},
 	originalOnlyItemsExtraMap: function(){
 		if (!this.isWorkAllowed()) {
 			return {};
 		}
-		return Network[this.data.NETWORK_ID].info.just_items_map_extra;
+		return RSNetworks[this.data.NETWORK_ID].info.just_items_map_extra;
 	},
     refreshModel: function(){
         RefinedStorage.mapTexture(this, this.data.isActive ? 'interface_on' : 'interface_off');
@@ -418,6 +428,7 @@ StorageInterface.createInterface(BlockID.RS_interface, {
 		"slot_input5": {input: true},
 		"slot_input6": {input: true},
 		"slot_input7": {input: true},
+		"slot_input8": {input: true},
 		"slot_output0": {output: true},
 		"slot_output1": {output: true},
 		"slot_output2": {output: true},
@@ -425,6 +436,7 @@ StorageInterface.createInterface(BlockID.RS_interface, {
 		"slot_output4": {output: true},
 		"slot_output5": {output: true},
 		"slot_output6": {output: true},
-		"slot_output7": {output: true}
+		"slot_output7": {output: true},
+		"slot_output8": {output: true}
 	}
 });

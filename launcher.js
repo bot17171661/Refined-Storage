@@ -1,1 +1,2 @@
+ConfigureMultiplayer({});
 Launch();

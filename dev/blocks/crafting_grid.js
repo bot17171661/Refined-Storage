@@ -445,8 +445,8 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	getCrafts: function(){
 		if (!this.isWorkAllowed()) return [];
-		if(!Network[this.data.NETWORK_ID].info.crafts) this.updateCrafts();
-		return Network[this.data.NETWORK_ID].info.crafts;
+		if(!RSNetworks[this.data.NETWORK_ID].info.crafts) this.updateCrafts();
+		return RSNetworks[this.data.NETWORK_ID].info.crafts;
 	},
 	updateCrafts: function(_cb){
 		if (!this.isWorkAllowed()) return false;
@@ -475,7 +475,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 			}
 		}
 		hashSet = posArray.concat(newArray);
-		Network[this.data.NETWORK_ID].info.crafts = hashSet;
+		RSNetworks[this.data.NETWORK_ID].info.crafts = hashSet;
 		return true;
 	},
 	craftsPages: function(){
@@ -515,7 +515,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	provideCraft: function(count){
 		if(!this.isWorkAllowed() || !this.data.selectedRecipe || !this.data.selectedRecipe.craftable) return false;
-		var netFuncs = Network[this.data.NETWORK_ID].info;
+		var netFuncs = RSNetworks[this.data.NETWORK_ID].info;
 		var selectedRecipe = this.data.selectedRecipe;
 		var javaRecipe = selectedRecipe.javaRecipe;
 		var result = selectedRecipe.result;
@@ -638,8 +638,8 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				var item = Player.getInventorySlot(event.slot);
 				if(item.id == 0) return;
 				var count = Math.min(event.count, item.count);
-				var pushed = this.pushItem({id: item.id, count: count, data: item.data, extra: item.extra});
-				if(pushed === 0 && item.count - count == 0){
+				var pushed = this.pushItem(item, count);
+				if(pushed == count){
 					Player.setInventorySlot(event.slot, 0, 0, 0);
 					this.refreshPageFull();
 				} else if(pushed < count){

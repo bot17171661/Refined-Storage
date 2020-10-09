@@ -62,12 +62,13 @@ const searchController = function (_coords, _self) {
 
 const searchController_net = function (net_id) {
 	if (net_id == 'f') return false;
-	for (var i in Network[net_id]) {
-		if (i != 'info' && Network[net_id][i].id == BlockID.RS_controller) return Network[net_id][i].coords;
+	for (var i in RSNetworks[net_id]) {
+		if (i != 'info' && RSNetworks[net_id][i].id == BlockID.RS_controller) return RSNetworks[net_id][i].coords;
 	}
 }
 
 function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _func) {
+	var blockSource_ = _coords.blockSource;
 	var outCoords = [];
 	outCoords.push(cts(_coords));
 	var cableDeleting = [];
@@ -79,14 +80,14 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			coordss.z = coords.z + sides[i][2];
 			if (outCoords.indexOf(cts(coordss)) != -1) continue;
 			outCoords.push(cts(coordss));
-			var bck = World.getBlock(coordss.x, coordss.y, coordss.z);
+			var bck = {id: blockSource_.getBlockId(coordss.x, coordss.y, coordss.z)};
 			var isRsBlock = (RS_blocks.indexOf(bck.id) != -1);
 			if (bck.id == BlockID.RS_controller) {
 				World.destroyBlock(coordss.x, coordss.y, coordss.z, true);
 				continue;
 			} else if (bck.id == BlockID.RS_cable) {
-				if(net_id != 'f' && Network[net_id]){
-					Network[net_id][cts(coordss)] = {
+				if(net_id != 'f' && RSNetworks[net_id]){
+					RSNetworks[net_id][cts(coordss)] = {
 						id: BlockID.RS_cable,
 						coords: coordss,
 						isActive: true
@@ -96,7 +97,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 				}
 				_search(coordss);
 			} else if (isRsBlock) {
-				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z) || World.addTileEntity(coordss.x, coordss.y, coordss.z);
+				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, blockSource_) || World.addTileEntity(coordss.x, coordss.y, coordss.z, blockSource_);
 				if (tile) {
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
 					tile.update_network(net_id, _first || (_defaultActive != undefined));
@@ -107,12 +108,12 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 		}
 	}
 	if(_self){
-		var bck = World.getBlock(_coords.x, _coords.y, _coords.z);
+		var bck = {id: blockSource_.getBlockId(_coords.x, _coords.y, _coords.z)};
 		var isRsBlock = RS_blocks.indexOf(bck.id) != -1;
 		if (isRsBlock && bck.id != BlockID.RS_controller) {
 			if (bck.id == BlockID.RS_cable) {
-				if(net_id != 'f' && Network[net_id]){
-					Network[net_id][cts(_coords)] = {
+				if(net_id != 'f' && RSNetworks[net_id]){
+					RSNetworks[net_id][cts(_coords)] = {
 						id: BlockID.RS_cable,
 						coords: _coords,
 						isActive: true
@@ -121,7 +122,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 					cableDeleting.push(cts(_coords));
 				}
 			} else {
-				var tile = World.getTileEntity(_coords.x, _coords.y, _coords.z) || World.addTileEntity(_coords.x, _coords.y, _coords.z);
+				var tile = World.getTileEntity(_coords.x, _coords.y, _coords.z, blockSource_) || World.addTileEntity(_coords.x, _coords.y, _coords.z, blockSource_);
 				if (tile) {
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
 					tile.update_network(net_id, _first || (_defaultActive != undefined));
@@ -132,15 +133,16 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 	}
 	_search(_coords);
 	if(cableDeleting.length > 0){
-		for(var i in Network){
+		for(var i in RSNetworks){
 			for(var k in cableDeleting){
-				if(Network[i][cableDeleting[k]]) delete Network[i][cableDeleting[k]];
+				if(RSNetworks[i][cableDeleting[k]]) delete RSNetworks[i][cableDeleting[k]];
 			}
 		}
 	}
 }
 
 function set_is_active_for_blocks(_coords, _state, isController) {
+	var blockSource_ = _coords.blockSource;
 	var outCoords = [];
 	outCoords.push(cts(_coords));
 	function _search(coords) {
@@ -151,11 +153,11 @@ function set_is_active_for_blocks(_coords, _state, isController) {
 			coordss.z = coords.z + sides[i][2];
 			if (outCoords.indexOf(cts(coordss)) != -1) continue;
 			outCoords.push(cts(coordss));
-			var bck = World.getBlock(coordss.x, coordss.y, coordss.z);
+			var bck = {id: blockSource_.getBlockId(coordss.x, coordss.y, coordss.z)};
 			if (bck.id == BlockID.RS_controller) {
 				continue;
 			} else if (RS_blocks.indexOf(bck.id) != -1) {
-				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z);
+				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, blockSource_);
 				if (tile) {
 					if(isController && !_state) 
 						tile.data.controllerOff = true;
@@ -170,10 +172,10 @@ function set_is_active_for_blocks(_coords, _state, isController) {
 	_search(_coords);
 }
 
-function set_is_active_for_blocks_net(net_id, _state, isController) {
-	for(var i in Network[net_id]){
-		if(i != 'info' && Network[net_id][i].id != BlockID.RS_controller){
-			var tile = World.getTileEntity(Network[net_id][i].coords.x, Network[net_id][i].coords.y, Network[net_id][i].coords.z);
+function set_is_active_for_blocks_net(net_id, _state, isController, _blockSource) {
+	for(var i in RSNetworks[net_id]){
+		if(i != 'info' && RSNetworks[net_id][i].id != BlockID.RS_controller){
+			var tile = World.getTileEntity(RSNetworks[net_id][i].coords.x, RSNetworks[net_id][i].coords.y, RSNetworks[net_id][i].coords.z, _blockSource);
 			if (tile) {
 				if(isController) tile.data.controllerOff = !_state;
 				tile.setActive(_state);
@@ -184,15 +186,15 @@ function set_is_active_for_blocks_net(net_id, _state, isController) {
 
 function checkAndSetNetOnCoords(coords, update){
 	if(!(controllerCoords = searchController(coords, true)))set_net_for_blocks(coords, 'f', true);
-	if(update && controllerCoords && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
+	if(update && controllerCoords && (tile = coords.blockSource.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
 }
 
 function searchBlocksInNetwork(net_id, id){
 	var res = [];
-	if(!Network[net_id]) return res;
-	for(var i in Network[net_id]){
-		if(Network[net_id][i] && Network[net_id][i].id == id){
-			res.push(Network[net_id][i]);
+	if(!RSNetworks[net_id]) return res;
+	for(var i in RSNetworks[net_id]){
+		if(RSNetworks[net_id][i] && RSNetworks[net_id][i].id == id){
+			res.push(RSNetworks[net_id][i]);
 		}
 	}
 	return res;
@@ -200,6 +202,10 @@ function searchBlocksInNetwork(net_id, id){
 
 function getItemUid(item){
 	return item.id + '_' + item.data + (item.extra ? '_' + item.extra.getValue() : '');
+}
+
+function eventToScriptable(_event){
+	return {y:_event.y, x: _event.x, type: _event.type, _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
 }
 
 var DiskData = [false];
@@ -303,10 +309,10 @@ const Disk = {
 	}
 }
 
-var Network = [];
+var RSNetworks = [];
 
 /* setInterval(function(){
-	alert(JSON.stringify(Network, null, '\t'));
+	alert(JSON.stringify(RSNetworks, null, '\t'));
 }, 60) */
 
 const RS_blocks = [];
@@ -316,8 +322,8 @@ Callback.addCallback('PostLoaded', function(){
 
 /* Callback.addCallback('DestroyBlock', function(coords, block){
 	if (block.id == BlockID.RS_cable) {
-		for(var i in Network){
-			if(Network[i][cts(coords)]) delete Network[i][cts(coords)];
+		for(var i in RSNetworks){
+			if(RSNetworks[i][cts(coords)]) delete RSNetworks[i][cts(coords)];
 		}
 	}
 	if(block.id != BlockID.RS_controller && RS_blocks.indexOf(block.id) != -1)for(var i in sides){
@@ -329,25 +335,29 @@ Callback.addCallback('PostLoaded', function(){
 		checkAndSetNetOnCoords(zCoords);
 	}
 }); */
-Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock){
+Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _blockSource){
+	_blockSource = BlockSource.getDefaultForDimension(_blockSource);
+	//alert(_blockSource.getBlockId(coords.x, coords.y, coords.z));
+	coords.blockSource = _blockSource;
 	if (oldBlock.id == BlockID.RS_cable) {
-		for(var i in Network){
-			if(Network[i][cts(coords)]) delete Network[i][cts(coords)];
+		for(var i in RSNetworks){
+			if(RSNetworks[i][cts(coords)]) delete RSNetworks[i][cts(coords)];
 		}
 	}
 	var isOldBlock = RS_blocks.indexOf(oldBlock.id) != -1;
 	var isNewBlock = RS_blocks.indexOf(newBlock.id) != -1;
-	if(isNewBlock && newBlock.id != BlockID.RS_cable)World.addTileEntity(coords.x, coords.y, coords.z);
+	if(isNewBlock && newBlock.id != BlockID.RS_cable)World.addTileEntity(coords.x, coords.y, coords.z, _blockSource);
 	if(oldBlock.id != BlockID.RS_controller && isOldBlock)for(var i in sides){
 		var zCoords = {
 			x: coords.x + sides[i][0],
 			y: coords.y + sides[i][1],
-			z: coords.z + sides[i][2]
+			z: coords.z + sides[i][2],
+			blockSource: _blockSource
 		}
 		checkAndSetNetOnCoords(zCoords);
 	}
 	if(newBlock.id == BlockID.RS_cable){
-		if((controllerCoords = searchController(coords, true)) && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
+		if((controllerCoords = searchController(coords, true)) && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z, _blockSource)))tile.updateControllerNetwork();
 	}
 	//alert('Block changed: ' + cts(coords) + ' : ' + JSON.stringify(oldBlock) + ' : ' + JSON.stringify(newBlock));
 });
@@ -357,8 +367,9 @@ const EnergyUse = {}
 var temp_data = {};
 
 Callback.addCallback("LevelLeft", function () {
+	//alert('Leave from level');
 	temp_data = {};
-	Network = [];
+	RSNetworks = [];
 });
 
 const RefinedStorage = {
@@ -374,13 +385,20 @@ const RefinedStorage = {
 		if(!params.init){
 			params.init = function () {
 				//alert(cts(this) + ' : init');
+				if(this.data.energy || this.data.energy === 0)this.networkData.putInt('energy', this.data.energy);
 				if(!this.data.createdCalled) {
 					this.data.NETWORK_ID = 'f';
+					this.networkData.putInt('NETWORK_ID', -1);
 					this.setActive(false);
 				}
 				this.data.block_data = World.getBlock(this.x, this.y, this.z).data;
 				if(this.refreshModel)this.refreshModel();
-				this.container.setOnCloseListener({
+				this.container.addClientOpenListener({
+					onOpen: function(container, name){
+
+					}
+				})
+				/* this.container.setOnCloseListener({
 					onClose: function(container, window){
 						var tile = container.tileEntity;
 						if(tile && tile.onWindowClose){
@@ -395,29 +413,32 @@ const RefinedStorage = {
 							tile.onWindowOpen(container, window);
 						}
 					}
-				});
+				}); */
 				if(this.post_init)this.post_init();
 				this.data.createdCalled = false;
+				this.networkData.sendChanges();
 			}
 		}
 		if (!params.update_network) {
 			params.update_network = function (net_id, _first) {
 				if (this.pre_update_network) if(this.pre_update_network(net_id)) return true;
-				if(net_id == 'f' && Network[this.data.NETWORK_ID] && (netElement = Network[this.data.NETWORK_ID][cts(this)]) && netElement.id == this.blockInfo.id) delete Network[this.data.NETWORK_ID][cts(this)];
+				if(net_id == 'f' && RSNetworks[this.data.NETWORK_ID] && (netElement = RSNetworks[this.data.NETWORK_ID][cts(this)]) && netElement.id == this.blockInfo.id) delete RSNetworks[this.data.NETWORK_ID][cts(this)];
 				this.data.NETWORK_ID = net_id;
-				if (net_id != "f" && Network[net_id]) {
+				this.networkData.putInt('NETWORK_ID', net_id != 'f' ? net_id : -1);
+				if (net_id != "f" && RSNetworks[net_id]) {
 					var coords_this = {
 						x: this.x,
 						y: this.y,
 						z: this.z
 					}
-					Network[net_id][cts(this)] = {
+					RSNetworks[net_id][cts(this)] = {
 						id: this.blockInfo.id,
 						coords: coords_this,
 						isActive: this.data.isActive || false
 					}
 				}
 				if(!_first)this.setActive(net_id != "f");
+				this.networkData.sendChanges();
 				if (this.post_update_network) this.post_update_network(net_id);
 			}
 		}
@@ -428,7 +449,7 @@ const RefinedStorage = {
 				if (this.pre_created) this.pre_created();
 				var controller = searchController(this);
 				if (controller) {
-					var tile = World.getTileEntity(controller.x, controller.y, controller.z);
+					var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
 					if (tile) {
 						tile.updateControllerNetwork();
 						if (this.post_created) this.post_created();
@@ -439,16 +460,19 @@ const RefinedStorage = {
 		if (!params.setActive) {
 			params.setActive = function (state, forced) {
 				state = !!state;
-				if(this.data.isActive == state) return;
-				if (this.pre_setActive) if(this.pre_setActive(state)) return;
-				if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return;
+				if(this.data.isActive == state) return false;
+				if (this.pre_setActive) if(this.pre_setActive(state)) return false;
+				if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return false;
 				if(state == false || (forced || (!this.data.controllerOff && this.data.allowSetIsActive != false))){
 					this.data.isActive = state;
-					if(this.data.NETWORK_ID != "f")Network[this.data.NETWORK_ID][this.coords_id()].isActive = state
+					this.networkData.putBoolean('isActive', state);
+					if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID][this.coords_id()].isActive = state
 				}
 				if(this.refreshModel)this.refreshModel();
+				this.networkData.sendChanges();
 				if (this.post_setActive) this.post_setActive(state);
 				if(this.refreshPageFull)this.refreshPageFull();
+				return true;
 			}
 		}
 		if(!params.redstone){
@@ -484,11 +508,11 @@ const RefinedStorage = {
 		if(!params.refreshRedstoneMode){
 			params.refreshRedstoneMode = function () {
 				if(this.data.redstone_mode == 0){
-					this.setActive(true);
+					return this.setActive(true);
 				} else if(this.redstoneAllowActive(this.data.last_redstone_event)){
-					this.setActive(true);
+					return this.setActive(true);
 				} else {
-					this.setActive(false);
+					return this.setActive(false);
 				}
 			}
 		}
@@ -499,15 +523,16 @@ const RefinedStorage = {
 		}
 		if(!params.destroy){
 			params.destroy = function(){
-				if(this.data.NETWORK_ID != 'f' && Network[this.data.NETWORK_ID]) delete Network[this.data.NETWORK_ID][cts(this)];
+				if(this.pre_destroy) this.pre_destroy();
+				if(this.data.NETWORK_ID != 'f' && RSNetworks[this.data.NETWORK_ID]) delete RSNetworks[this.data.NETWORK_ID][cts(this)];
 				this.data.NETWORK_ID = 'f';
-				BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
+				//BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
 				if(this.post_destroy) this.post_destroy();
 			}
 		}
 		if(!params.isWorkAllowed){
 			params.isWorkAllowed = function(){
-				if(this.data.NETWORK_ID == "f" || !Network[this.data.NETWORK_ID] || !this.data.isActive) return false;
+				if(this.data.NETWORK_ID == "f" || !RSNetworks[this.data.NETWORK_ID] || !this.data.isActive) return false;
 				return true;
 			}
 		}
