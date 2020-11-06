@@ -36,8 +36,48 @@ for (var izxc = 0; izxc < 4; izxc++) {
 
 var filter_size_map = [24, 36, 32];//6,9,8  *4
 
-function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
+var gridData = {
+	maxY: 0,
+	lastPage: -1,
+	textSearch: false,
+	lowPriority: false,
+	updateGui: function(){}
+}
 
+function gridSwitchPage(page, container, ignore, dontMoveSlider){
+	var slots = container.slots;
+	var slotsKeys = gridData.slotsKeys;
+	var slots_count = gridData.slots_count;
+	var x_count = gridData.x_count;
+	var pages1 = gridFuncs.getPages(slotsKeys.length);
+	var pages = Math.max(1, pages1 + 1 - gridData.y_count);
+	page = Math.max(1, Math.min(page, pages)) - 1;
+	if(page == gridData.lastPage - 1 && !ignore) return false;
+	gridData.lastPage = page + 1;
+	var pages = gridFuncs.getPages(slotsKeys.length);
+	var ___y = gridFuncs.getCoordsFromPage(page + 1, pages);
+	if(!dontMoveSlider)container.getUiAdapter().getElement("slider_button").setPosition(_elementsGUI_grid['slider_button'].x, ___y);
+	if (!gridData.isWorkAllowed) {
+		for (var i = 0; i < slots_count; i++) {
+			container.setSlot("slot" + i, 0, 0, 0, null);
+		}
+		return false;
+	}
+	for (var i = page * x_count; i < page * x_count + slots_count; i++) {
+		var a = i - (page * x_count);
+		var item = slots[slotsKeys[i]] || { id: 0, data: 0, count: 0, extra: null };
+		container.setSlot("slot" + a, item.id, item.count, item.data, item.extra || null);
+	}
+	return true;
+}
+
+function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
+	var gridData = grid_Data || {
+		maxY: 0,
+		lastPage: -1,
+		textSearch: false,
+		updateGui: function(){}
+	};
 	var moving = false;
 	var max_y = 0;
 	var swipe_y;
@@ -59,44 +99,54 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		}
 	};
 	elementsGUI_grid.clickFrameTouchEvents.push(function (element, event) {
-		var tile = element.window.getContainer().tileEntity;
-		var content = element.window.getContainer().getGuiContent();
-		if (event.type == "DOWN" && !swipe_y && event.x > content.elements["x_start"] && event.x < content.elements["x_end"] && event.y > content.elements["y_start"] && event.y < content.elements["y_end"]) {
+		var content = {elements:elementsGUI_grid};/* element.window.getContent(); *///getContainer().getGuiContent();
+		var itemContainerUiHandler = element.window.getContainer();
+		var itemContainer = itemContainerUiHandler.getParent();
+		if (event.type == "DOWN" && !swipe_y && event.x > elementsGUI_grid["x_start"] && event.x < elementsGUI_grid["x_end"] && event.y > elementsGUI_grid["y_start"] && event.y < elementsGUI_grid["y_end"]) {
 			swipe_y = event.y;
 		} else if (swipe_y && event.type == "MOVE") {
 			var distance = Math.abs(event.y - swipe_y);
-			function exec_swipe(){
-				if (event.y > swipe_y) tile.switchFullPage(tile.data.page - 1);
-				if (event.y < swipe_y) tile.switchFullPage(tile.data.page + 1);
-				tile.data.page_switched = true;
-				swipe_sum = 0;
+			function moveSwitchPage_(_n){
+				_n = (_n ? 1 : -1);
+				gridSwitchPage(gridData.lastPage + _n, itemContainer)
+				/* if(!gridSwitchPage(gridData.lastPage + _n, itemContainer)) return;
+				var pages = gridFuncs.getPages(gridData.slotsKeys.length);
+				var ___y = gridFuncs.getCoordsFromPage(gridData.lastPage + _n, pages);
+				itemContainerUiHandler.getElement("slider_button").setPosition(elementsGUI_grid['slider_button'].x, ___y); */
 			}
 			if (distance > 7) {
-				exec_swipe();
+				if (event.y > swipe_y) moveSwitchPage_(false);
+				if (event.y < swipe_y) moveSwitchPage_(true);
+				swipe_sum = 0;
 			} else {
 				swipe_sum += distance;
 				if (swipe_sum > 15) {
-					exec_swipe();
+					if (event.y > swipe_y) moveSwitchPage_(false);
+					if (event.y < swipe_y) moveSwitchPage_(true);
+					swipe_sum = 0;
 				}
 			}
 			swipe_y = event.y;
 		} else if (swipe_y && (event.type == "UP" || event.type == "CLICK")) {
-			tile.data.page_switched = false;
 			swipe_y = false;
 		}
 		if (!moving) return;
 		event.y -= content.elements["slider_button"].scale * 15 / 2;
 		if (event.type != 'UP' && event.type != "CLICK") {
-			element.window.getContentProvider().elementMap.get("slider_button").setPosition(content.elements['slider_button'].x, Math.max(Math.min(event.y, max_y), content.elements["slider_button"].start_y))
-			tile.moveCur(event, true);
+			var page = gridFuncs.getPageFromCoords(event, gridFuncs.getPages(gridData.slotsKeys.length));
+			itemContainerUiHandler.getElement("slider_button").setPosition(content.elements['slider_button'].x, Math.max(Math.min(event.y, max_y), content.elements["slider_button"].start_y));
+			gridSwitchPage(page, itemContainer, false, true);
 		}
 		if (event.type == "UP" || event.type == "CLICK") {
 			moving = false;
-			tile.moveCur(event);
+			var pages = gridFuncs.getPages(gridData.slotsKeys.length);
+			var page = gridFuncs.getPageFromCoords(event, pages);
+			gridSwitchPage(page, itemContainer);
+			/* var ___y = gridFuncs.getCoordsFromPage(page, pages);
+			itemContainerUiHandler.getElement("slider_button").setPosition(elementsGUI_grid['slider_button'].x, ___y); */
 		}
 	})
 
-	var asd = 0;
 	var x_count = Math.ceil((900 - x) / cons);
 	var y_count = limit || Math.ceil((UI.getScreenHeight()- 60 - y - cons) / cons);
 
@@ -109,7 +159,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap: "search_bar",
 		scale: 0.8,
 		clicker: {
-			onClick: function (container, tileEntity, element) {
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				UI.getContext().runOnUiThread(new java.lang.Runnable({// I take this from Recipe Viewer https://icmods.mineprogramming.org/mod?id=455 :D
 					run: function () {
 						try {
@@ -120,13 +170,13 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 								.setView(editText)
 								.setPositiveButton(Translation.translate("Search"), {
 									onClick: function () {
-										if (!container.isOpened()) return;
+										if (!itemContainerUiHandler.getWindow().isOpened()) return;
 										var keyword = editText.getText() + "";
-										elementsGUI_grid["search_text"].text = keyword.length ? keyword : Translation.translate('Search');
-										tileEntity.data.textSearch = keyword.length ? keyword : false;
-										tileEntity.refreshPageFull();
+										gridData.textSearch = keyword.length ? keyword : false;
+										gridData.updateGui(true, true);
 									}
 								}).show();
+							//UI.getContext().getActionBar().hide();
 						} catch (e) {
 							alert(e);
 						}
@@ -149,6 +199,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		}
 	}
 
+	var asd = 0;
 	var _y = y;
 	var _x = x;
 	for (var i = 0; i < y_count; i++) {
@@ -160,46 +211,97 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 				x: _x,
 				y: _y,
 				clicker: {
-					onClick: function (param1_, param2_, param3_) {
-						var tileEntity = param2_.data ? param2_ : param3_;
-						if(!tileEntity || !tileEntity.data || !tileEntity.data.isActive || tileEntity.data.page_switched) return;
-						var item_ident = this.num + (tileEntity.data.page - 1) * x_count;
-						var items_list = tileEntity.items_list();
-						if(!items_list) return;
-						var item = items_list[item_ident];
-						if(!item) return;
-						var itemUid = getItemUid(item);
-						if(tileEntity.data.pushDeleteEvents[itemUid]){
-							tileEntity.data.pushDeleteEvents[itemUid] += 1;
+					onClick: function (itemContainerUiHandler, itemContainer, element) {
+						var itemContainer = itemContainer.slots ? itemContainer : element;
+						if (!gridData.isWorkAllowed) return;
+						var _num = this.num + (gridData.lastPage - 1) * x_count;
+						var slot = gridData.slotsKeys[_num];
+						var slotItem = itemContainer.slots[slot];
+						if(!slotItem || slotItem.id == 0) return;
+						var _count = 1;
+						var updateFull = false;
+						if(slotItem.count == _count) {
+							itemContainer.setSlot(slot, 0, 0, 0);
+							gridData.slotsKeys.splice(_num, 1);
+							//gridData.slotsKeys.push(slot);
+							updateFull = true;
+							gridData.updateGui(true, true);
 						} else {
-							tileEntity.data.pushDeleteEvents[itemUid] = {
-								type: 'delete',
-								count: 1,
-								item: item
+							if(gridData.sort == 0){
+								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
+									for(var decNum = -1; slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
+									decNum++;
+									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									//gridData.slotsKeys.splice(_num, 1);
+									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
+									updateFull = true;
+									gridData.updateGui(true, true);
+								} else {
+									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								}
+							} else {
+								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 							}
 						}
-						return;
+						var map = (asdgfasdasddsad = gridData.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
+						if(map.indexOf(slot) == -1){
+							map.push(slot);
+							gridData.networkData.putString('deleteItemsMap', JSON.stringify(map));
+						}
+						var currentCount = gridData.networkData.getInt(slot, 0);
+						gridData.networkData.putInt(slot, currentCount + _count);
+						gridData.networkData.putBoolean('update', true);
+						gridData.networkData.putBoolean('updateFull'+slot, updateFull);
+						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + ' ; lastPage: ' + gridData.lastPage + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 					},
-					onLongClick: function (param1_, param2_, param3_) {
-						var tileEntity = param2_.data ? param2_ : param3_;
-						if(!tileEntity || !tileEntity.data || !tileEntity.data.isActive || tileEntity.data.page_switched) return;
-						var item_ident = this.num + (tileEntity.data.page - 1) * x_count;
-						var items_list = tileEntity.items_list();
-						if(!items_list) return;
-						var item = items_list[item_ident];
-						if(!item) return;
-						var itemUid = getItemUid(item);
-						var itemMaxStack = Item.getMaxStack(item.id);
-						if(tileEntity.data.pushDeleteEvents[itemUid]){
-							tileEntity.data.pushDeleteEvents[itemUid] += itemMaxStack;
+					onLongClick: function (itemContainerUiHandler, itemContainer, element) {
+						var itemContainer = itemContainer.slots ? itemContainer : element;
+						if (!gridData.isWorkAllowed) return;
+						var _num = this.num + (gridData.lastPage - 1) * x_count;
+						var slot = gridData.slotsKeys[_num];
+						var slotItem = itemContainer.slots[slot];
+						if(!slotItem || slotItem.id == 0) return;
+						var maxStack = Item.getMaxStack(slotItem.id);
+						var this_item = searchItem(slotItem.id, slotItem.data, false, true);
+						var _count = this_item && this_item.count < maxStack && this_item.extra == slotItem.extra ? Math.min(slotItem.count, maxStack - this_item.count) : Math.min(slotItem.count, maxStack);
+						var updateFull = false;
+						if(slotItem.count <= _count) {
+							itemContainer.setSlot(slot, 0, 0, 0);
+							gridData.slotsKeys.splice(_num, 1);
+							//gridData.slotsKeys.push(slot);
+							updateFull = true;
+							gridData.updateGui(true, true);
 						} else {
-							tileEntity.data.pushDeleteEvents[itemUid] = {
-								type: 'delete',
-								count: itemMaxStack,
-								item: item
+							if(gridData.sort == 0){
+								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
+									for(var decNum = -1; slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
+									decNum++;
+									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									//gridData.slotsKeys.splice(_num, 1);
+									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
+									updateFull = true;
+									gridData.updateGui(true, true);
+								} else {
+									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								}
+							} else {
+								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 							}
 						}
-						return;
+						var map = (asdgfasdasddsad = gridData.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
+						if(map.indexOf(slot) == -1){
+							map.push(slot);
+							gridData.networkData.putString('deleteItemsMap', JSON.stringify(map));
+						}
+						var currentCount = gridData.networkData.getInt(slot, 0);
+						gridData.networkData.putInt(slot, currentCount + _count);
+						gridData.networkData.putBoolean('update', true);
+						gridData.networkData.putBoolean('updateFull'+slot, updateFull);
+						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + ' ; lastPage: ' + gridData.lastPage + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 					}
 				},
 				size: cons + 1
@@ -218,6 +320,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 	elementsGUI_grid["y_end"] = _y;
 	elementsGUI_grid["cons"] = cons;
 
+	gridData.slots_count = asd;
+	gridData.x_count = x_count;
+	gridData.y_count = y_count;
+	gridData.cons = cons;
+
 	var slider_frame_cons = 20;
 	var slider_frame_border = 7;
 	elementsGUI_grid["slider_frame"] = {
@@ -233,8 +340,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 				moving = true;
 			}
 			if (event.type == 'CLICK') {
-				var tile = element.window.getContainer().tileEntity;
-				tile.moveCur(event);
+				var itemContainerUiHandler = element.window.getContainer();
+				var itemContainer = itemContainerUiHandler.getParent();
+				var pages = gridFuncs.getPages(gridData.slotsKeys.length);
+				var page = gridFuncs.getPageFromCoords(event, pages);
+				gridSwitchPage(page, itemContainer);
 			}
 		}
 	}
@@ -255,13 +365,10 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap2: 'but_upPressed',
 		scale: Math.min((1000 - _x - slider_frame_cons * 2) / 25, (y - 30 - 10) / 15),
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				var page = tileEntity.data.page;
-				var pageTo = Math.max(page - 1, 1);
-				tileEntity.switchPage(pageTo);
-				tileEntity.moveCurToPage(pageTo - 1);
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
+				gridSwitchPage(gridData.lastPage - 1, itemContainer);
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, container, element) {
 			}
 		}
 	}
@@ -278,14 +385,10 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap2: 'but_downPressed',
 		scale: elementsGUI_grid["button_up"].scale,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				var pages = tileEntity.pages();
-				var page = tileEntity.data.page;
-				var pageTo = Math.min(page + 1, pages);
-				tileEntity.switchPage(pageTo);
-				tileEntity.moveCurToPage(pageTo - 1);
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
+				gridSwitchPage(gridData.lastPage + 1, itemContainer);
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 			}
 		}
 	}
@@ -302,13 +405,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap2: 'RS_empty_button_pressed',
 		scale: 2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				if(tileEntity.data.redstone_mode == undefined) tileEntity.data.redstone_mode = 0;
-				tileEntity.data.redstone_mode = tileEntity.data.redstone_mode >= 2 ? 0 : tileEntity.data.redstone_mode + 1;
-				elementsGUI_grid["image_redstone"].bitmap = 'redstone_GUI_' + tileEntity.data.redstone_mode;
-				tileEntity.refreshRedstoneMode();
+			onClick: function (itemContainerUiHandler, container, element) {
+				container.sendEvent("updateRedstoneMode", {});
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, container, element) {
+
 			}
 		}
 	}
@@ -331,20 +432,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap2: 'RS_empty_button_pressed',
 		scale: 2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				//alert('Oh ah');
-				if (tileEntity.data.sort >= 2) {
-					tileEntity.data.sort = 0;
-				} else {
-					tileEntity.data.sort++;
-				}
-				elementsGUI_grid["image_filter"].bitmap = 'RS_filter' + (tileEntity.data.sort + 1);
-				elementsGUI_grid["image_filter"].x = elementsGUI_grid["filter_button"].x + (elementsGUI_grid["filter_button"].scale * 20 - filter_size_map[tileEntity.data.sort]) / 2;
-				//temp_data[tileEntity.controller_id()].refresh = true;
-				tileEntity.refreshPageFull();
+			onClick: function (itemContainerUiHandler, container, element) {
+				container.sendEvent("updateFilter", {});
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
-				// если задан, задает функцию долгого нажатия
+			onLongClick: function (itemContainerUiHandler, container, element) {
+				
 			}
 		}
 	}
@@ -367,18 +459,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 		bitmap2: 'RS_empty_button_pressed',
 		scale: 2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				tileEntity.data.reverse_filter = !tileEntity.data.reverse_filter;
-				if (tileEntity.data.reverse_filter) {
-					elementsGUI_grid["image_reverse_filter"].bitmap = 'RS_arrow_up';
-				} else {
-					elementsGUI_grid["image_reverse_filter"].bitmap = 'RS_arrow_down';
-				}
-				//temp_data[tileEntity.controller_id()].refresh = true;
-				tileEntity.refreshPageFull();
+			onClick: function (itemContainerUiHandler, container, element) {
+				container.sendEvent("updateReverseFilter", {});
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
-				// если задан, задает функцию долгого нажатия
+			onLongClick: function (itemContainerUiHandler, container, element) {
+				
 			}
 		}
 	}
@@ -396,13 +481,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid) {
 	elementsGUI_grid["image_reverse_filter"].y = elementsGUI_grid["reverse_filter_button"].y + (elementsGUI_grid["reverse_filter_button"].scale * 20 - (elementsGUI_grid["image_reverse_filter"].scale * 10)) / 2
 
 	max_y = (elementsGUI_grid["slider_frame"].y + elementsGUI_grid["slider_frame"].height) - 7 - elementsGUI_grid["slider_button"].scale * 15;
-
+	elementsGUI_grid["max_y"] = max_y;
+	gridData.maxY = max_y;
 };
 var _elementsGUI_grid = {};
-grid_set_elements(360, 70, 50, 0, _elementsGUI_grid);
-/* testButtons(_elementsGUI_grid, function(){
-	grid_set_elements(360, 70, 50, 0, _elementsGUI_grid);
-}); */
+grid_set_elements(360, 70, 50, 0, _elementsGUI_grid, gridData);
 
 var gridGUI = new UI.StandartWindow({
 	standart: {
@@ -420,20 +503,14 @@ var gridGUI = new UI.StandartWindow({
 		}
 	},
 
-	drawing: [/* {type: "line", x2: 1000, y1: UI.getScreenHeight()- 60 - 70 - 50, y2: UI.getScreenHeight()- 60 - 70 - 50} */],
+	drawing: [],
 
 	elements: _elementsGUI_grid
 });
 GUIs.push(gridGUI);
-
-/* var __elementMap_ = gridGUI.getWindow('main').getContentProvider().elementMap;
-for(var i = 0; i < _elementsGUI_grid["slots_count"]; i++){
-	var element = __elementMap_.get("slot"+i).getClass();
-	var field = element.getDeclaredField("font");
-	field.setAccessible(true);
-	//var value = field.get();
-} */
-//alert(!!gridGUI.getWindow('main').getContentProvider().elementMap.get('slot0').font)
+testButtons(gridGUI.getWindow('header').getContent().elements, function(){
+	grid_set_elements(360, 70, 50, 0, _elementsGUI_grid, gridData);
+});
 
 var inv_elements = gridGUI.getWindow('inventory').getContent();
 inv_elements.elements["_CLICKFRAME_"] = {
@@ -447,35 +524,53 @@ inv_elements.elements["_CLICKFRAME_"] = {
 	scale: 1,
 	onTouchEvent: function(element, event){
 		if(event.type == 'CLICK' || event.type == 'LONG_CLICK'){
-			var tile = element.window.getContainer().tileEntity;
-			if(!tile.data.isActive) return;
+			if (!gridData.isWorkAllowed) return;
+			var itemContainerUiHandler = element.window.getContainer();
+			var itemContainer = itemContainerUiHandler.getParent();
 			var slot_id = Math.floor(event.x/251)+Math.floor(event.y/251)*4;
+			var updateFull = false;
 			var item = Player.getInventorySlot(slot_id);
-			if(!item) return;
-			if(item.id == 0) return;
-			item.extra = item.extra || null;
+			if(item.id == 0)return;
+			//alert(JSON.stringify(item));
+			if(gridData.disksStored >= gridData.disksStorage) return
 			if(event.type == 'CLICK'){
-				if(tile.data.pushDeleteEvents[slot_id]){
-					tile.data.pushDeleteEvents[slot_id] += 1;
-				} else {
-					tile.data.pushDeleteEvents[slot_id] = {
-						type: 'push',
-						count: 1,
-						slot: slot_id
-					}
-				}
+				var count = 1;
 			} else {
-				var itemMaxStack = Item.getMaxStack(item.id);
-				if(tile.data.pushDeleteEvents[slot_id]){
-					tile.data.pushDeleteEvents[slot_id] += itemMaxStack;
-				} else {
-					tile.data.pushDeleteEvents[slot_id] = {
-						type: 'push',
-						count: itemMaxStack,
-						slot: slot_id
-					}
+				var count = Math.min(Item.getMaxStack(item.id), gridData.disksStorage - gridData.disksStored, item.count);
+			}
+			if(Config.dev)Logger.Log('Pushing item: ' + JSON.stringify(item) + ' ; count: ' + count + ' ; slot: ' + slot_id, 'RefinedStorageDebug');
+			var slotFounded = false;
+			for(var i in gridData.slotsKeys){
+				var _slotName = gridData.slotsKeys[i];
+				var _slot = itemContainer.slots[_slotName];
+				if(_slot && (_slot.id == 0 || (_slot.id == item.id && _slot.data == item.data && _slot.extra == item.extra))){
+					if(Config.dev)Logger.Log('Founded slot: ' + _slotName + ' : ' + JSON.stringify(_slot.asScriptable()), 'RefinedStorageDebug');
+					slotFounded = true;
+					itemContainer.setSlot(_slotName, item.id, _slot.count + count, item.data, item.extra || null);
+					if(gridData.sort == 0) updateFull = true;
+					gridData.updateGui(true, updateFull);
+					gridData.lowPriority = true;
+					break
 				}
 			}
+			if(!slotFounded){
+				var _slotName = gridData.slotsKeys.length + 'slot';
+				if(Config.dev)Logger.Log('Slot not founded, new slot name: ' + _slotName, 'RefinedStorageDebug');
+				gridData.slotsKeys.push(_slotName);
+				itemContainer.setSlot(_slotName, item.id, count, item.data, item.extra || null);
+				updateFull = true;
+				gridData.updateGui(true, updateFull);
+				gridData.lowPriority = true;
+			}
+			var map = (asdgfasdasddsad = gridData.networkData.getString('pushItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
+			if(map.indexOf(slot_id) == -1){
+				map.push(slot_id);
+				gridData.networkData.putString('pushItemsMap', JSON.stringify(map));
+			}
+			var currentCount = gridData.networkData.getInt(slot_id, 0);
+			gridData.networkData.putInt(slot_id, currentCount + count);
+			gridData.networkData.putBoolean('update', true);
+			gridData.networkData.putBoolean('updateFull'+slot_id, updateFull);
 		}
 	}
 }
@@ -486,13 +581,113 @@ function error(message) {
 	return false;
 }
 
+var gridFuncs = {
+	getPages: function(_length){
+		if(_length == 0) return 1;
+		_length = Math.ceil(_length / _elementsGUI_grid["x_count"]);
+		return _length;
+	},
+	getPageFromCoords: function(_coords, pages){
+		var interval = (pages - 1) > 0 ? (_elementsGUI_grid["max_y"] - _elementsGUI_grid["slider_button"].start_y) / (pages - 1) : 0;
+		function __getY(i) {
+			return ((interval * i) + _elementsGUI_grid["slider_button"].start_y);
+		}
+		var least_dec = 10001;
+		var finish_i = 0;
+		for (var i = 0; i < pages; i++) {
+			var dec = Math.abs(Math.round(_coords.y - __getY(i)));
+			if (dec < least_dec) {
+				least_dec = dec;
+				finish_i = i;
+			}
+		};
+		var page = finish_i;
+		return page + 1;
+	},
+	getCoordsFromPage: function(page, pages){
+		var interval = (pages - 1) > 0 ? (_elementsGUI_grid["max_y"] - _elementsGUI_grid["slider_button"].start_y) / (pages - 1) : 0;
+		function __getY(i) {
+			return ((interval * i) + _elementsGUI_grid["slider_button"].start_y);
+		}
+		if (page > pages) page = pages;
+		if (page < 1) page = 1;
+		return __getY(page - 1);
+	},
+	compareSlots: function(slot1, slot2){
+		if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
+		return false;
+	},
+	sort: function (type, reverse, slots) {
+		if (reverse) {
+			if (type == 2) {
+				return function (a, b) { 
+					if(slots[a].id == 0) return -1;
+					if(slots[b].id == 0) return 1;
+					return slots[b].id - slots[a].id 
+				};
+			} else if (type == 0) {
+				return function (a, b) { 
+					if(slots[a].count == 0) return -1;
+					if(slots[b].count == 0) return 1;
+					return slots[b].count - slots[a].count 
+				};
+			} else if (type == 1) {
+				return function (a, b) {
+					var slot1 = slots[a];
+					var slot2 = slots[b];
+					if(slot1.id == 0) return -1;
+					if(slot2.id == 0) return 1;
+					var name1 = getItemName(slot1.id, slot1.data);
+					var name2 = getItemName(slot2.id, slot2.data);
+					if (name2 > name1) {
+						return 1;
+					}
+					if (name2 < name1) {
+						return -1;
+					}
+					return 0;
+				};
+			}
+		} else {
+			if (type == 2) {
+				return function (a, b) {
+					if(slots[a].id == 0) return 1;
+					if(slots[b].id == 0) return -1;
+					return slots[a].id - slots[b].id 
+				};
+			} else if (type == 0) {
+				return function (a, b) { 
+					if(slots[a].count == 0) return 1;
+					if(slots[b].count == 0) return -1;
+					return slots[a].count - slots[b].count;
+				};
+			} else if (type == 1) {
+				return function (a, b) {
+					var slot1 = slots[a];
+					var slot2 = slots[b];
+					if(slot1.id == 0) return 1;
+					if(slot2.id == 0) return -1;
+					var name1 = getItemName(slot1.id, slot1.data);
+					var name2 = getItemName(slot2.id, slot2.data);
+					if (name1 > name2) {
+						return 1;
+					}
+					if (name1 < name2) {
+						return -1;
+					}
+					return 0;
+				};
+			}
+		}
+	}
+}
+
 RefinedStorage.createTile(BlockID.RS_grid, {
 	defaultValues: {
 		NETWORK_ID: 'f',
 		LAST_NETWORK_ID: 0,
 		block_data: 0,
 		page: 1,
-		//disk_map: {},
 		items: [],
 		event: { x: 0, y: 0 },
 		sort: 0,
@@ -503,46 +698,17 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		slots_count: 0,
 		textSearch: false,
 		privateRemaked: false,
-		//isActive: false/*,
-		//filter_indexes: []*/
-		/* 
-			pushDeleteEvents: {
-				"id_data_extra?": {
-					type: "push" || "delete",
-					count: number,
-					item?: item,
-					slot?: number
-				}
-			}
-		*/
-		pushDeleteEvents: {}
+		pushDeleteEvents: {},
 	},
-	click: function () {
-		if(Entity.getSneaking(Player.get())) return false;
-		this.data.textSearch = false;
-		if (this.container.isOpened()) return true;
-		this.container.openAs(gridGUI);
-		//alert(this.data.NETWORK_ID + ' : ' + this.data.isActive);
-		var ths = this;
-		setTimeout(function(){
-			ths.items();
-			ths.switchFullPage(1);
-			ths.update_slots_bitmap();
-		}, 1)
-		/* this.items();
-		this.switchFullPage(1);
-		this.update_slots_bitmap(); */
-		var content = this.container.getGuiContent();
-		this.data.slots_count = content.elements.slots_count;
-		content.elements["image_filter"].bitmap = 'RS_filter' + (this.data.sort + 1);
-		content.elements["image_filter"].x = content.elements["filter_button"].x + (content.elements["filter_button"].scale * 20 - filter_size_map[this.data.sort]) / 2;
-		if (this.data.reverse_filter) {
-			content.elements["image_reverse_filter"].bitmap = 'RS_arrow_up';
-		} else {
-			content.elements["image_reverse_filter"].bitmap = 'RS_arrow_down';
-		}
-		content.elements["search_text"].text = Translation.translate('Search');
-		content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (this.data.redstone_mode || 0);
+	useNetworkItemContainer: true,
+	setActiveNotUpdateGui: true,
+	click: function (id, count, data, coords, player, extra) {
+		if(Entity.getSneaking(player)) return false;
+		var client = Network.getClientForPlayer(player);
+		if (!client || this.container.getNetworkEntity().getClients().contains(client)) return true;
+		this.items();
+		this.container.openFor(client, "main");
+		this.refreshGui(true, client); 
 		return true;
 	},
 	onWindowClose: function(){
@@ -557,187 +723,99 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
 		if(RSNetworks[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id}) == -1) RSNetworks[this.data.NETWORK_ID].info.openedGrids.push({x: this.x, y: this.y, z: this.z});
 	},
-	moveCur: function (event, lite) {
-		if (!this.container.isOpened()) return;
-		if (!this.isWorkAllowed()) {
-			if (this.container.isOpened() && !lite) this.moveCurToPage(0);
-			return;
-		}
-		var content = this.container.getGuiContent();
-		var max_y = (content.elements["slider_frame"].y + content.elements["slider_frame"].height) - 7 - content.elements["slider_button"].scale * 15;
-		var pages = this.pages();
-		if (pages <= 1) {
-			this.container.getElement('slider_button').setPosition(content.elements["slider_button"].x, content.elements["slider_button"].start_y);
-			return;
-		}
-		var interval = (max_y - content.elements["slider_button"].start_y) / pages;
-		function __getY(i) {
-			return ((interval * i) + content.elements["slider_button"].start_y);
-		}
-		var mas = [];
-		var least_dec = 10001;
-		var finish_i = 0;
-		for (var i = 0; i <= pages; i++) {
-			var dec = Math.abs(Math.round(event.y - __getY(i)));
-			if (dec < least_dec) {
-				least_dec = dec;
-				finish_i = i;
-			}
-		};
-		var page = finish_i;
-		if (page >= pages) page = pages - 1;
-		if (!lite) this.moveCurToPage(page);
-		this.switchPage(page + 1);
-	},
 	post_init: function(){
-		//alert('grid init');
-		/* Saver.registerObject(this.container, EMPTY_SAVER);
-		Saver.setObjectIgnored(this.data.pushDeleteEvents, true);
-		this.container = new UI.Container(this); */
 		this.data.pushDeleteEvents = {};
 	},
-	moveCurToPage: function (page) {
-		if (!this.container.isOpened()) return;
-		if (!this.isWorkAllowed()) {
-			if (this.container.isOpened()) {
-				var content = this.container.getGuiContent();
-				this.container.getElement('slider_button').setPosition(content.elements["slider_button"].x, content.elements["slider_button"].start_y);
-			}
-			return;
-		}
-		var content = this.container.getGuiContent();
-		var max_y = (content.elements["slider_frame"].y + content.elements["slider_frame"].height) - 7 - content.elements["slider_button"].scale * 15;
-		var pages = this.pages();
-		var interval = (max_y - content.elements["slider_button"].start_y) / pages;
-		function __getY(i) {
-			return ((interval * i) + content.elements["slider_button"].start_y);
-		}
-		if (page > pages) page = pages;
-		if (page < 0) page = 0;
-		this.container.getElement('slider_button').setPosition(content.elements["slider_button"].x, __getY(page));
-	},
 	tick: function () {
-		if (this.container.isOpened() && this.data.NETWORK_ID != "f") {
-			var content = this.container.getGuiContent();
-			content.elements["slider_button"].bitmap = this.pages() <= 1 ? 'slider_buttonOff' : 'slider_buttonOn';
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			if(this.data.refreshCurPage){
-				this.refreshPageFull();
+				this.items();
+				this.refreshGui();
 				this.data.refreshCurPage = false;
 			}
 		}
-		for(var i in this.data.pushDeleteEvents){
-			var event = this.data.pushDeleteEvents[i];
-			if(!event) {
-				delete this.data.pushDeleteEvents[i];
-				continue;
-			}
-			if(event.type == 'push'){
-				var item = Player.getInventorySlot(event.slot);
-				if(item.id == 0) return;
-				var count = Math.min(event.count, item.count);
-				var pushed = this.pushItem(item, count);
-				alert(JSON.stringify(item) + ' : ' + count + ' : ' + pushed);
-				if(pushed == count){
-					Player.setInventorySlot(event.slot, 0, 0, 0);
-					this.refreshPageFull();
-				} else if(pushed < count){
-					Player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
-					this.refreshPageFull();
+		for(var p in this.data.pushDeleteEvents){
+			var player = new PlayerActor(Number(p));
+			//alert('Checking event of: ' + p);
+			for(var i in this.data.pushDeleteEvents[p]){
+				var event = this.data.pushDeleteEvents[p][i];
+				//alert('Event: ' + JSON.stringify(event));
+				if(!event) {
+					delete this.data.pushDeleteEvents[p][i];
+					continue;
 				}
-				delete this.data.pushDeleteEvents[i];
-			}
-			if(event.type == 'delete'){
-				var item = event.item;
-				var itemMaxStack = Item.getMaxStack(item.id);
-				var this_item;
-				if(item && ((emptySlots = searchItem(0, -1, true)).length > 0 || ((this_item = searchItem(item.id, item.data, false, true)) && this_item.extra == item.extra && this_item.count < itemMaxStack))){
-					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count, itemMaxStack*emptySlots.length);
-					if((res = this.deleteItem(item, count)) < count) {
-						alert(count + ' : ' + res);
-						Player.addItemToInventory(item.id, count - res, item.data, item.extra || null, false);
-						this.refreshPageFull();
+				if(event.type == 'push'){
+					var item = player.getInventorySlot(event.slot);
+					if(item.id == 0) return;
+					var count = Math.min(event.count, item.count);
+					var pushed = this.pushItem(item, count);
+					if(pushed == count){
+						player.setInventorySlot(event.slot, 0, 0, 0);
+					} else if(pushed < count){
+						player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
 					}
+					var iterator = this.container.getNetworkEntity().getClients().iterator();
+					while(iterator.hasNext()){
+						var _client = iterator.next();
+						if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
+					}
+					delete this.data.pushDeleteEvents[p][i];
 				}
-				delete this.data.pushDeleteEvents[i];
+				if(event.type == 'delete'){
+					var item = event.item;
+					var itemMaxStack = Item.getMaxStack(item.id);
+					var this_item = searchItem(item.id, item.data, false, true, p);
+					if(item){
+						var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+						if((res = this.deleteItem(item, count, true)) < count) {
+							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+							this.items();
+							var iterator = this.container.getNetworkEntity().getClients().iterator();
+							while(iterator.hasNext()){
+								var _client = iterator.next();
+								if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
+							}
+						}
+					}
+					delete this.data.pushDeleteEvents[p][i];
+				}
 			}
+			delete this.data.pushDeleteEvents[p];
 		}
-	},
-	post_created: function () {
-		this.data.block_data = World.getBlock(this.x, this.y, this.z).data;
-		/* this.container = new UI.Container();
-		this.container.setParent(this); */
 	},
 	post_update_network: function () {
 		this.data.controller_coords = searchController_net(this.data.NETWORK_ID);
-		this.update_slots_bitmap();
-	},
-	update_slots_bitmap: function () {
-		if (this.container.isOpened()) {
-			var content = this.container.getGuiContent();
-			var slots_count = content.elements.slots_count;
-			if (this.data.NETWORK_ID == 'f' || !this.data.isActive) {
-				for (var i = 0; i < slots_count; i++) {
-					this.container.setSlot('slot' + i, 0, 0, 0);
-					content.elements['slot' + i].bitmap = 'classic_darken_slot';
-				}
-				content.elements["slider_button"].bitmap = 'slider_buttonOff';
-				this.switchFullPage(1);
-			} else if (content.elements['slot0'].bitmap == 'classic_darken_slot') {
-				for (var i = 0; i < slots_count; i++) {
-					content.elements['slot' + i].bitmap = 'classic_slot';
-				}
-				this.switchFullPage(1);
-			}
-		}
+		this.refreshGui(false, false, true);
 	},
 	post_setActive: function(){
 		this.items();
-		this.update_slots_bitmap();
+		this.refreshGui(false, false, true);
 	},
 	controller_id: function () {
 		if (this.data.NETWORK_ID == "f") return '0,0,0';
 		return this.data.controller_coords.x + ',' + this.data.controller_coords.y + ',' + this.data.controller_coords.z;
 	},
 	pages: function () {
-		if (this.container.isOpened() && this.data.NETWORK_ID != "f") {
-			var content = this.container.getGuiContent();
-			var items = this.items_list();//this.items()//temp_data[this.controller_id()].items;
-			if(!items) return 1;
-			//if (this.data.textSearch) items = items;//items = temp_data[this.controller_id()].filtered_items;
-			//return Math.ceil(temp_data[this.controller_id()].items.length / content.elements.slots_count) || 1;
-			var _length = Math.ceil(items.length / content.elements.x_count);
-			return Math.max(_length - Math.min(_length, content.elements.y_count) + 1, 0) || 1;
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext() && this.data.NETWORK_ID != "f") {
+			return gridFuncs.getPages(this.originalItems().length)
 		} else {
 			return 1;
 		}
 	},
-	items_list: function(_var){
-		if(_var != undefined){
-			temp_data[this.coords_id()] = _var;
-		} else {
-			return temp_data[this.coords_id()];
-		}
-	},
 	items: function () {
 		if (!this.isWorkAllowed()) {
-			this.items_list([]);
 			return [];
 		}
 		var items = RSNetworks[this.data.NETWORK_ID].info.items;
-		if(this.data.textSearch)var textSearch = new RegExp(this.data.textSearch, "i");
-		items = this.data.textSearch ? items.filter(function (value, index) {
-			if(!value.name){
-				//alert('error! ' + JSON.stringify(value));
-				return false
+		var slotsKeys = Object.keys(this.container.slots);
+		for(var i = 0; i < Math.max(slotsKeys.length, items.length); i++){
+			var slot = this.container.getSlot(i+'slot');
+			var slot2 = items[i] || {id:0, data:0, count:0, extra: null};
+			if(!gridFuncs.compareSlots(slot, slot2)){
+				this.container.setSlot(i+'slot', slot2.id, slot2.count, slot2.data, slot2.extra || null);
 			}
-			if (value.name.match(textSearch)) {
-				//filter_indexes.push(index);
-				return true;
-			}
-		}, this) : items.slice();
-		items.sort(this.sort(this.data.sort));
-		this.items_list(items);
-		if(this.post_items)this.post_items();
+		}
+		this.container.sendChanges();
 		return items;
 	},
 	originalItems: function(){
@@ -764,99 +842,203 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		}
 		return RSNetworks[this.data.NETWORK_ID].info.just_items_map_extra;
 	},
-	pushItem: function (item, count) {
+	getDisksStorage: function(){
+		if (!this.isWorkAllowed()) {
+			return 0;
+		}
+		return RSNetworks[this.data.NETWORK_ID].info.storage;
+	},
+	getDisksStored: function(){
+		if (!this.isWorkAllowed()) {
+			return 0;
+		}
+		return RSNetworks[this.data.NETWORK_ID].info.stored;
+	},
+	pushItem: function (item, count, nonUpdate) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = RSNetworks[this.data.NETWORK_ID].info.pushItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.pushItem(item, count, nonUpdate);
 		if(this.post_pushItem)this.post_pushItem(item, count, res);
 		return res;
 	},
-	deleteItem: function (item, count) {
+	deleteItem: function (item, count, nonUpdate) {
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return count;
-		var res = RSNetworks[this.data.NETWORK_ID].info.deleteItem(item, count);
+		var res = RSNetworks[this.data.NETWORK_ID].info.deleteItem(item, count, nonUpdate);
 		if(this.post_deleteItem)this.post_deleteItem(item, count, res);
 		return res;
-	},
-	addItem: function (item, count) {
-		//if (this.data.NETWORK_ID == "f") return false;
-	},
-	switchPage: function (num) {
-		if (!this.container.isOpened() || !this.isWorkAllowed()) return;
-		num = num || 1;
-		var pages = this.pages();
-		if (num > pages) num = pages;
-		if (num < 1) num = 1;
-		var container = this.container;
-		var content = this.container.getGuiContent();
-		var slots_count = content.elements.slots_count;
-		var x_count = content.elements.x_count;
-		//var y_count = content.elements.y_count;
-		var items = this.items_list() || [];
-		for (var i = (num - 1) * x_count; i < (num - 1) * x_count + slots_count; i++) {
-			var a = i - ((num - 1) * x_count);
-			var item = items[i] || { id: 0, data: 0, count: 0, extra: null };
-			container.setSlot("slot" + a, item.id, item.count, item.data, item.extra || null);
-		}
-		this.data.page = num;
-	},
-	switchFullPage: function (page) {
-		this.switchPage(page);
-		this.moveCurToPage(page - 1);
-	},
-	refreshPage: function () {
-		this.switchPage(this.data.page);
-	},
-	refreshPageFull: function () {
-		this.items();
-		this.refreshPage();
-		this.moveCurToPage(this.data.page - 1);
-		if(this.post_RefreshPageFull)this.post_RefreshPageFull();
 	},
 	post_destroy: function () {
 		delete temp_data[this.coords_id()];
 		this.container.slots = {};
-	},
-	sort: function (type) {
-		if (this.data.reverse_filter) {
-			if (type == 2) {
-				return function (a, b) { return b.id - a.id };
-			} else if (type == 0) {
-				return function (a, b) { return a.count - b.count };
-			} else if (type == 1) {
-				return function (a, b) {
-					if (b.name > a.name) {
-						return 1;
-					}
-					if (b.name < a.name) {
-						return -1;
-					}
-					return 0;
-				};
-			}
-		} else {
-			if (type == 2) {
-				return function (a, b) { return a.id - b.id };
-			} else if (type == 0) {
-				return function (a, b) { return b.count - a.count };
-			} else if (type == 1) {
-				return function (a, b) {
-					if (a.name > b.name) {
-						return 1;
-					}
-					if (a.name < b.name) {
-						return -1;
-					}
-					return 0;
-				};
-			}
+		for(var i in this.container.slots){
+			this.container.clearSlot(i);
 		}
 	},
 	refreshModel: function(){
-		var render = new ICRender.Model();
-		//alert(this.data.block_data);
-		var model = BlockRenderer.createTexturedBlock(getGridTexture(this.data.block_data, this.data.isActive));
-		render.addEntry(model);
-		BlockRenderer.mapAtCoords(this.x, this.y, this.z, render);
+		if(!this.networkEntity) return Logger.Log(Item.getName(this.blockInfo.id, this.blockInfo.data) + ' model on: ' + cts(this) + ' cannot be displayed');
+		this.sendPacket("refreshModel", {block_data: this.data.block_data, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z, dimension: this.dimension}});
+	},
+	refreshGui: function(first, client, updateFilters){
+		var _data = {
+			name: this.networkData.getName() + '', 
+			isActive: this.data.isActive, 
+			NETWORK_ID: this.data.NETWORK_ID,
+			redstone_mode: this.data.redstone_mode,
+			sort: this.data.sort,
+			redstone_mode: this.data.redstone_mode,
+			reverse_filter: this.data.reverse_filter,
+			refresh: !first,
+			updateFilters: first || updateFilters,
+			disksStorage: this.getDisksStorage(),
+			disksStored: this.getDisksStored(),
+			isWorkAllowed: this.isWorkAllowed()
+			//slotsLength: Object.keys(this.container.slots).length
+		};
+		if(client){
+			this.container.sendEvent(client, "openGui", _data);
+		} else {
+			this.container.sendEvent("openGui", _data);
+		}
+	},
+	getScreenByName: function(screenName) {
+		if(screenName == 'main')return gridGUI;
+	},
+	client: {
+		refreshModel: function(){
+			alert('Local refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			var render = new ICRender.Model();
+			var model = BlockRenderer.createTexturedBlock(getGridTexture(this.networkData.getInt('block_data'), this.networkData.getBoolean('isActive')));
+			render.addEntry(model);
+			BlockRenderer.mapAtCoords(this.x, this.y, this.z, render);
+		},
+		tick: function(){
+			if(this.networkData.getBoolean('update', false)){
+				this.networkData.putBoolean('update', false);
+				var pushDeleteEvents = {};
+				var map = (asdgfasdasddsad = this.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
+				for(var i in map){
+					pushDeleteEvents[map[i]] = {
+						type: 'delete',
+						count: Number(this.networkData.getInt(map[i], 0)),
+						updateFull: this.networkData.getBoolean('updateFull'+map[i], false)
+					}
+					this.networkData.putInt(map[i], 0);
+				}
+				this.networkData.putString('deleteItemsMap', 'null');
+				var map = (asdgfasdasddsad = this.networkData.getString('pushItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
+				for(var i in map){
+					pushDeleteEvents[map[i]] = {
+						type: 'push',
+						count: Number(this.networkData.getInt(map[i], 0)),
+						slot: map[i],
+						updateFull: this.networkData.getBoolean('updateFull'+map[i], false)
+					}
+					this.networkData.putInt(map[i], 0);
+				}
+				this.networkData.putString('pushItemsMap', 'null');
+				this.sendPacket("pushDeleteEvents", {pushDeleteEvents: pushDeleteEvents})
+			}
+		},
+		events: {
+			refreshModel: function(eventData, packetExtra) {
+				alert('Event refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive') + ' : ' + eventData.isActive);
+				var render = new ICRender.Model();
+				var model = BlockRenderer.createTexturedBlock(getGridTexture(eventData.block_data, eventData.isActive));
+				render.addEntry(model);
+				BlockRenderer.mapAtCoords(eventData.coords.x, eventData.coords.y, eventData.coords.z, render);
+			}
+		},
+		containerEvents: {
+			openGui: function(container, window, content, eventData){
+				Object.assign(gridData, eventData);
+				gridData.updateGui = function(refresh, updateFilters, nonlocal){
+					if(!content || (window && !window.isOpened())) return;
+					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: ' + JSON.stringify(eventData), 'RefinedStorageDebug');
+					delete container.slots.bindings;
+					delete container.slots.slots;
+					gridData.networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
+					if(updateFilters){
+						var _slotKeys = [];
+						for(var i in container.slots)if(i[0] != 's')_slotKeys.push(i);
+						gridData.slotsKeys = _slotKeys;//Object.keys(container.slots).splice(0, eventData.slotsLength);
+						//alert(gridData.slotsKeys);
+						//if(Config.dev)Logger.Log('Pre items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
+						if(!refresh)gridData.textSearch = false;
+						if(gridData.textSearch){
+							var textSearch = new RegExp(gridData.textSearch, "i");
+							gridData.slotsKeys = gridData.slotsKeys.filter(function (value, index) {
+								var slot = container.slots[value];
+								if (getItemName(slot.id, slot.data).match(textSearch)) {
+									return true;
+								}
+							})
+						};
+						gridData.slotsKeys.sort(gridFuncs.sort(eventData.sort, eventData.reverse_filter, container.slots));
+						//if(Config.dev)Logger.Log('Post items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
+					}
+					content.elements["image_filter"].bitmap = 'RS_filter' + (eventData.sort + 1);
+					content.elements["image_filter"].x = content.elements["filter_button"].x + (content.elements["filter_button"].scale * 20 - filter_size_map[eventData.sort]) / 2;
+					if (eventData.reverse_filter) {
+						content.elements["image_reverse_filter"].bitmap = 'RS_arrow_up';
+					} else {
+						content.elements["image_reverse_filter"].bitmap = 'RS_arrow_down';
+					}
+					content.elements["search_text"].text = gridData.textSearch ? gridData.textSearch : Translation.translate('Search');
+					content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
+					var slots_count = content.elements.slots_count;
+					content.elements["slider_button"].bitmap = gridData.slotsKeys.length <= gridData.slots_count ? 'slider_buttonOff' : 'slider_buttonOn';
+					//if(refresh)window.getWindow('main').getElements().get("slider_button").setPosition(content.elements['slider_button'].x, gridFuncs.getCoordsFromPage(gridData.lastPage, gridFuncs.getPages(gridData.slotsKeys.length)));
+					if (!eventData.isWorkAllowed) {
+						//alert('Hey, slots is darken: ' + eventData.NETWORK_ID + ' ; ' + eventData.isActive);
+						for (var i = 0; i < slots_count; i++) {
+							content.elements['slot' + i].bitmap = 'classic_darken_slot';
+						}
+						content.elements["slider_button"].bitmap = 'slider_buttonOff';
+					} else if (content.elements['slot0'].bitmap == 'classic_darken_slot') {
+						for (var i = 0; i < slots_count; i++) {
+							content.elements['slot' + i].bitmap = 'classic_slot';
+						}
+					}
+					gridSwitchPage(refresh ? gridData.lastPage : 1, container, true);
+				}
+				if(gridData.lowPriority){
+					gridData.lowPriority = false;
+					var craftsThread = java.lang.Thread({
+						run: function(){
+							try {
+								gridData.updateGui(eventData.refresh, eventData.updateFilters, true);
+							} catch(err){
+								alert('Sorry, i broke :_(' + JSON.stringify(err));
+							}
+						}
+					});
+					craftsThread.setPriority(java.lang.Thread.MIN_PRIORITY);
+					craftsThread.start();
+				} else {
+					gridData.updateGui(eventData.refresh, eventData.updateFilters, true);
+				}
+			}
+		}
+	},
+	containerEvents: {
+		updateFilter: function(eventData, connectedClient) {
+			if(this.data.sort == undefined) this.data.sort = 0;
+			this.data.sort = this.data.sort >= 2 ? 0 : this.data.sort + 1;
+			this.refreshGui(false, false, true);
+		},
+		updateReverseFilter: function(eventData, connectedClient) {
+			this.data.reverse_filter = !this.data.reverse_filter;
+			this.refreshGui(false, false, true);
+		}
+	},
+	events: {
+		pushDeleteEvents: function(packetData, packetExtra, connectedClient) {
+			for(var i in packetData.pushDeleteEvents){
+				if(packetData.pushDeleteEvents[i].type == 'delete')packetData.pushDeleteEvents[i].item = this.container.getSlot(i).asScriptable();
+			}
+			this.data.pushDeleteEvents[connectedClient.getPlayerUid()] = packetData.pushDeleteEvents;
+			if(Config.dev)Logger.Log('Getted pushDeleteEvents from: ' + connectedClient.getPlayerUid() + '(' + Entity.getNameTag(connectedClient.getPlayerUid()) + ') : ' + JSON.stringify(packetData.pushDeleteEvents), 'RefinedStorageDebug');
+		}
 	}
 })

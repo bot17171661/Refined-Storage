@@ -30,14 +30,15 @@ Callback.addCallback("LevelLeft", function () {
 
 var levelloaded = false;
 
-const searchItem = function (id, data, list, reverse) {
+const searchItem = function (id, data, list, reverse, playerUid) {
+	var player = playerUid ? new PlayerActor(playerUid) : Player;
 	if(typeof(data) != "number")data = -1;
 	if(typeof(id) != "number")id = -1;
 	if(reverse){
 		if(list){
 			var itemsList = [];
 			for (var i = 35; i >= 0; i--) {
-				var item = Player.getInventorySlot(i);
+				var item = player.getInventorySlot(i);
 				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
 					itemsList.push({
 						id: item.id,
@@ -50,7 +51,7 @@ const searchItem = function (id, data, list, reverse) {
 			}
 			return itemsList;
 		} else for (var i = 35; i >= 0; i--) {
-			var item = Player.getInventorySlot(i);
+			var item = player.getInventorySlot(i);
 			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
 				return {
 					id: item.id,
@@ -65,7 +66,7 @@ const searchItem = function (id, data, list, reverse) {
 		if(list){
 			var itemsList = [];
 			for (var i = 0; i <= 35; i++) {
-				var item = Player.getInventorySlot(i);
+				var item = player.getInventorySlot(i);
 				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
 					itemsList.push({
 						id: item.id,
@@ -78,7 +79,7 @@ const searchItem = function (id, data, list, reverse) {
 			}
 			return itemsList;
 		} else for (var i = 0; i <= 35; i++) {
-			var item = Player.getInventorySlot(i);
+			var item = player.getInventorySlot(i);
 			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
 				return {
 					id: item.id,

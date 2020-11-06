@@ -59,12 +59,12 @@ Block.registerDropFunction("RS_controller", function (coords, id, data, diggingL
 	return [];
 });
 
-Block.registerPlaceFunction("RS_controller", function (coords, item, block) {
+Block.registerPlaceFunction("RS_controller", function (coords, item, block, player, blockSource) {
 	coords = World.canTileBeReplaced(block.id, block.data) ? coords : coords.relative;
-	var relBlock = World.getBlock(coords.x, coords.y, coords.z);
-	if (relBlock.id != 0 && relBlock.id != 9 && relBlock.id != 11) return;
+	var relBlock = blockSource.getBlockId(coords.x, coords.y, coords.z);
+	if (relBlock != 0 && relBlock != 9 && relBlock != 11) return;
 	World.setBlock(coords.x, coords.y, coords.z, item.id, item.data);
-	var tile = World.addTileEntity(coords.x, coords.y, coords.z) || World.getTileEntity(coords.x, coords.y, coords.z);
+	var tile = World.addTileEntity(coords.x, coords.y, coords.z, blockSource) || World.getTileEntity(coords.x, coords.y, coords.z, blockSource);
 	var energy = 0;
 	if(item.data == 3 && tile && tile.data){
 		tile.data.isCreative = true;
@@ -85,56 +85,40 @@ var controller_other_data = {
 	lastPage: -1
 };
 var controllerSwitchPage = function(num, container, data, ignore){
-	/* var asd = Object.assign(data);
-	asd.networkData = null;
-	alert(num + ' : ' + JSON.stringify(asd)); */
-	var uiAdapter = container.getUiAdapter();
 	if(!data.isActive){
 		for (var i = 0; i < 4; i++) {
 			container.clearSlot("slot" + i);
-			/* container.setText('block_info' + i, '');
+			container.setText('block_info' + i, '');
 			container.setText('block_count' + i, '');
-			container.setText('block_energy_use' + i, ''); */
-			uiAdapter.setBinding('block_info' + i, 'text', '');
-			uiAdapter.setBinding('block_count' + i, 'text', '');
-			uiAdapter.setBinding('block_energy_use' + i, 'text', '');
+			container.setText('block_energy_use' + i, '');
 		}
 		return false;
 	}
 	num = num || 1;
 	var aray_net_map = Object.keys(data.net_map);
-	var pages = controllerFuncs.getPages(aray_net_map.length);
+	var pages1 = controllerFuncs.getPages(aray_net_map.length);
+	var pages = Math.max(1, pages1 - 1);
 	num = Math.max(1, Math.min(num, pages)) - 1;
-	//if(pages <= 2) num = 0;
-	//if(num >= pages - 1) num = pages - 2;
 	if(num == data.lastPage && !ignore) return false;
 	data.lastPage = num;
-	//alert('okay');
 	if(aray_net_map.length == 0){
 		for (var i = 0; i < 4; i++) {
 			container.clearSlot("slot" + i);
-			/* container.setText('block_info' + i, '');
+			container.setText('block_info' + i, '');
 			container.setText('block_count' + i, '');
-			container.setText('block_energy_use' + i, ''); */
-			uiAdapter.setBinding('block_info' + i, 'text', '');
-			uiAdapter.setBinding('block_count' + i, 'text', '');
-			uiAdapter.setBinding('block_energy_use' + i, 'text', '');
+			container.setText('block_energy_use' + i, '');
 		}
 	} else {
 		for (var i = num * 2; i < num * 2 + 4; i++) {
 			var a = i - (num * 2);
 			var item = aray_net_map[i] ? data.net_map[aray_net_map[i]] : {};
 			var _id = item.id ? Network.serverToLocalId(item.id) : 0;
-			//alert('Text and slots updated');
 			container.setSlot("slot" + a, _id, 1, item.data || 0, item.extra || null);
 			var name = item.id ? Item.getName(_id, item.data || 0).split('\n')[0] : '';
 			if(name.length > controller_other_data['max_sym']) name = name.substr(0, controller_other_data['max_sym'] - 1) + '...';
-			/* container.setText('block_info' + a, name);
+			container.setText('block_info' + a, name);
 			container.setText('block_count' + a, _id ? item.count + 'x' : '');
-			container.setText('block_energy_use' + a, _id ? item.energy_use + ' FE/t' : ''); */
-			uiAdapter.setBinding('block_info' + a, 'text', name);
-			uiAdapter.setBinding('block_count' + a, 'text', _id ? item.count + 'x' : '');
-			uiAdapter.setBinding('block_energy_use' + a, 'text', _id ? item.energy_use + ' FE/t' : '');
+			container.setText('block_energy_use' + a, _id ? item.energy_use + ' FE/t' : '');
 		}
 	}
 	return true;
@@ -423,7 +407,6 @@ function initControllerElements() {
 	controller_other_data.max_y = max_y;
 };
 initControllerElements();
-testButtons(elementsGUI_controller, initControllerElements);
 
 const CONTROLLER_GUI = new UI.StandartWindow({
 	standart: {
@@ -442,6 +425,7 @@ const CONTROLLER_GUI = new UI.StandartWindow({
 	elements: elementsGUI_controller
 });
 GUIs.push(CONTROLLER_GUI);
+testButtons(CONTROLLER_GUI.getWindow('header').getContent().elements, initControllerElements);
 
 var controllerFuncs = {
 	getNewTexture: function (energyScaled, isActive) {
@@ -503,7 +487,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		redstone_mode: 0,
 		isCreative: false,
 		networkDataUpdate: false,
-		containerUpdate: false
+		containerUpdate: false,
+		ticks: 0
 	},
 	useNetworkItemContainer: true,
 	created: function () {
@@ -513,46 +498,48 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				coordss.x = this.x + sides[i][0];
 				coordss.y = this.y + sides[i][1];
 				coordss.z = this.z + sides[i][2];
-				var bck = World.getBlock(coordss.x, coordss.y, coordss.z);
-				if (RS_blocks.indexOf(bck.id) != -1) {
-					if(bck.id == BlockID.RS_cable){
+				var bck = this.blockSource.getBlockId(coordss.x, coordss.y, coordss.z);
+				if (RS_blocks.indexOf(bck) != -1) {
+					if(bck == BlockID.RS_cable){
 						for(var i in RSNetworks){
 							if(RSNetworks[i][cts(coordss)]){
 								delete RSNetworks[i][cts(coordss)];
-								World.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+								this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
 							}
 						}
 					} else {
-						var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z);
+						var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, this.blockSource);
 						if (tile && tile.data.NETWORK_ID != 'f' && tile.data.NETWORK_ID != this.data.NETWORK_ID) {
-							World.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+							this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
 						}
 					}
 				}
 			}
 		}
 	},
-	setActive: function(state, forced){
-		state = !!state;
-		if(this.data.isActive == state) return;
-		if (this.pre_setActive) if(this.pre_setActive(state)) return;
-		if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return;
-		if(state && this.data.energy < this.data.usage) return;
+	setActive: function(state, forced, preventRefreshModel){
+		state = this.data.NETWORK_ID != "f" ? !!state : false;
+		if(this.data.isActive == state && !forced) return false;
+		if (this.pre_setActive) if(this.pre_setActive(state)) return false;
+		if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return false;
+		if(state && this.data.energy < this.data.usage) return false;
 		if(state == false || (forced || this.data.allowSetIsActive != false)){
 			this.data.isActive = state;
 			this.networkData.putBoolean('isActive', state);
-			if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID][this.coords_id()].isActive = state
+			if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID][this.coords_id()].isActive = state;
 		}
-		this.refreshModel();
 		this.networkData.sendChanges();
+		if(!preventRefreshModel)this.refreshModel();
 		if (this.post_setActive) this.post_setActive(state);
-		this.refreshGui();
+		return true;
 	},
 	init: function () {
-		if (this.data.NETWORK_ID == "f" || !RSNetworks[this.data.NETWORK_ID]) {
+		//if (this.data.NETWORK_ID == "f" || !RSNetworks[this.data.NETWORK_ID]) {
 			this.data.NETWORK_ID = RSNetworks.length;
 			var controllerTile = this;
+			this.networkData.putInt('energy', this.data.energy);
 			this.networkData.putInt('NETWORK_ID', RSNetworks.length);
+			this.networkData.putBoolean('isActive', this.data.isActive || false);
 			var _data = {};
 			_data[cts(this)] = {
 				id: BlockID.RS_controller,
@@ -578,6 +565,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					}
 				},
 				updateItems: function(){
+					if(Config.dev)Logger.Log('Updating items', 'RefinedStorageDebug');
 					var diskDrives = searchBlocksInNetwork(this.net_id, BlockID['diskDrive']);
 					var disk_map = [];
 					var items_map = [];
@@ -588,7 +576,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					var just_items_map_extra = {};
 					//var disk_items_map = {};
 					for(var i in diskDrives){
-						var tile = World.getTileEntity(diskDrives[i].coords.x, diskDrives[i].coords.y, diskDrives[i].coords.z);
+						var tile = World.getTileEntity(diskDrives[i].coords.x, diskDrives[i].coords.y, diskDrives[i].coords.z, controllerTile.blockSource);
 						if(!tile || !tile.data.isActive) continue;
 						var newDiskData = [];
 						//newDiskData.id = cts(diskDrives[i].coords);
@@ -640,7 +628,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				itemCanBePushed: function(item, count){
 					return Math.min(this.storage - this.stored, count || item.count);
 				},
-				pushItem: function(item, count){
+				pushItem: function(item, count, nonUpdate){
 					count = count || item.count;
 					if(!this.itemCanBePushed(item, count)) return count;
 					var itemUid = getItemUid(item);
@@ -664,13 +652,13 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							}
 						}
 					} else {
-						if(!item.name)item.name = Item.getName(item.id, item.data);
+						//if(!item.name)item.name = Item.getName(item.id, item.data);
 						this.items.push({
 							id: item.id,
 							data: item.data,
 							count: Math.min(count, this.storage - this.stored),
 							extra: item.extra,
-							name: item.name
+							//name: item.name
 						});
 						this.items_map.push(itemUid);
 						if(this.just_items_map[item.id] && this.just_items_map[item.id].indexOf(item.data) == -1){
@@ -694,7 +682,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									data: item.data,
 									count: freeSpace,
 									extra: item.extra,
-									name: item.name
+									//name: item.name
 								}
 								this.disk_map[i][k].items_stored += freeSpace;
 								this.disk_items_map[itemUid].push(this.disk_map[i][k].items[itemUid], this.disk_map[i][k]);
@@ -705,7 +693,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									data: item.data,
 									count: count,
 									extra: item.extra,
-									name: item.name
+									//name: item.name
 								}
 								this.disk_map[i][k].items_stored += count;
 								this.disk_items_map[itemUid].push(this.disk_map[i][k].items[itemUid], this.disk_map[i][k]);
@@ -723,7 +711,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 						for(var i in this.disk_map){
 							for(var k in this.disk_map[i]){
 								if(count == 0 || this.storage - this.stored == 0){
-									this.refreshOpenedGrids();
+									if(!nonUpdate)this.refreshOpenedGrids();
 									return count;
 								};
 								if(disk_item = this.disk_map[i][k].items[itemUid]){
@@ -740,20 +728,20 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 										this.stored += count;
 										this.disk_map[i][k].items_stored += count;
 										disk_item.count += count;
-										this.refreshOpenedGrids();
+										if(!nonUpdate)this.refreshOpenedGrids();
 										return 0;
 									}
 								};
 							}
 						}
 					} else {
-						if(!item.name)item.name = Item.getName(item.id, item.data);
+						//if(!item.name)item.name = Item.getName(item.id, item.data);
 						this.items.push({
 							id: item.id,
 							data: item.data,
 							count: Math.min(count, this.storage - this.stored),
-							extra: item.extra,
-							name: item.name
+							extra: item.extra/* ,
+							name: item.name */
 						});
 						this.items_map.push(itemUid);
 						if(this.just_items_map[item.id] && this.just_items_map[item.id].indexOf(item.data) == -1){
@@ -770,12 +758,12 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							}
 						}
 					}
-					if(!item.name)item.name = Item.getName(item.id, item.data);
+					//if(!item.name)item.name = Item.getName(item.id, item.data);
 					//this.stored += count1;
 					for(var i in this.disk_map){
 						for(var k in this.disk_map[i]){
 							if(count == 0 || this.storage - this.stored == 0) {
-								this.refreshOpenedGrids();
+								if(!nonUpdate)this.refreshOpenedGrids();
 								return count;
 							}
 							if(!this.disk_map[i][k]) continue;
@@ -788,8 +776,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									id: item.id,
 									data: item.data,
 									count: freeSpace,
-									extra: item.extra,
-									name: item.name
+									extra: item.extra/* ,
+									name: item.name */
 								}
 								this.disk_map[i][k].items_stored += freeSpace;
 							} else {
@@ -798,17 +786,17 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									id: item.id,
 									data: item.data,
 									count: count,
-									extra: item.extra,
-									name: item.name
+									extra: item.extra/* ,
+									name: item.name */
 								}
 								this.disk_map[i][k].items_stored += count;
-								this.refreshOpenedGrids();
+								if(!nonUpdate)this.refreshOpenedGrids();
 								return 0;
 							}
 						}
 					};
 					//}
-					this.refreshOpenedGrids();
+					if(!nonUpdate)this.refreshOpenedGrids();
 				},
 				itemCanBeDeleted: function(item, count){
 					count = count || item.count;
@@ -820,7 +808,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 						return false;
 					}
 				},
-				deleteItem: function(item, count){
+				deleteItem: function(item, count, nonUpdate){
 					count = count || item.count;
 					if(this.stored == 0) return count;
 					var itemUid = getItemUid(item);
@@ -847,7 +835,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 										this.stored -= disk_item.count;
 										this.disk_map[i][k].items_stored -= disk_item.count;
 										delete this.disk_map[i][k].items[itemUid];
-										this.refreshOpenedGrids();
+										if(!nonUpdate)this.refreshOpenedGrids();
 										return 0;
 									}
 								}
@@ -857,7 +845,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							for(var i in this.disk_map){
 								for(var k in this.disk_map[i]){
 									if(count == 0 || this.stored == 0) {
-										this.refreshOpenedGrids();
+										if(!nonUpdate)this.refreshOpenedGrids();
 										return count;
 									};
 									if(!this.disk_map[i][k] || !this.disk_map[i][k].items) continue;
@@ -871,31 +859,25 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 											this.stored -= count;
 											this.disk_map[i][k].items_stored -= count;
 											disk_item.count -= count;
-											this.refreshOpenedGrids();
+											if(!nonUpdate)this.refreshOpenedGrids();
 											return 0;
 										}
 									};
 								}
 							}
-							this.refreshOpenedGrids();
+							if(!nonUpdate)this.refreshOpenedGrids();
 							return count;
 						}
 					} else {
 						alert('Hey, are you doing something wrong');
 					}
-					this.refreshOpenedGrids();
+					if(!nonUpdate)this.refreshOpenedGrids();
 				}
 			}
 			RSNetworks.push(_data);
-			var ths = this;
-			setTimeout(function(){
-				_data['info'].updateItems();
-				ths.updateControllerNetwork(true);
-				ths.updateNetMap();
-				ths.setActive(ths.data.energy > ths.data.usage);
-				ths.refreshModel();
-			},2);
-		}
+			this.networkData.sendChanges();
+			this.data.timer = 20;
+		//}
 	},
 	updateItems: function(){
 		if(this.data.NETWORK_ID != 'f'){
@@ -904,7 +886,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	updateControllerNetwork: function(_first){
 		//alert('Controller network update');
-		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, this.data.isActive/* , function(coords, block){
+		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, _first ? undefined : this.data.isActive/* , function(coords, block){
 			if(block.id == BlockID.RS_controller/*  && cts(this) != cts(coords) ){
 				alert('WIY WIY WIY WIY');
 				World.destroyBlock(coords.x, coords.y, coords.z, true);
@@ -944,8 +926,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			this.container.setText('usage', Translation.translate('Usage') + ": 0 FE/t");
 			this.container.sendChanges();
 		} else {
+			this.container.setText('usage', Translation.translate('Usage')+": " + this.data.usage + " FE/t");
+			this.container.sendChanges();
 			this.updateNetMap();
 		}
+		this.refreshGui();
 		set_is_active_for_blocks_net(this.data.NETWORK_ID, state, true, this.blockSource);
 	},
 	pages: function () {
@@ -1001,12 +986,24 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(state && this.data.energy <= 0) return true;
 	},
 	tick: function () {
+		if(this.data.timer){
+			this.data.ticks++;
+			if(this.data.ticks >= this.data.timer) {
+				this.updateItems();
+				this.updateControllerNetwork(true);
+				this.updateNetMap();
+				this.setActive(this.data.energy > this.data.usage, true, true);
+				this.refreshModel();
+				this.data.timer = false;
+				this.data.ticks = 0;
+			}
+		}
 		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			this.container.setScale('scale', this.data.energy / this.getCapacity());
 			this.container.setText('storage', this.data.energy + '/' + this.getCapacity() + ' FE');
 			this.data.containerUpdate = true;
 		}
-		if(!this.data.isActive || this.data.NETWORK_ID == "f") {
+		if(!this.isWorkAllowed()) {
 			if(this.data.containerUpdate){
 				this.container.sendChanges();
 				this.data.containerUpdate = false;
@@ -1041,10 +1038,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	refreshModel: function(){
+		if(!this.networkEntity) return Logger.Log(Item.getName(this.blockInfo.id, this.blockInfo.data) + ' model on: ' + cts(this) + ' cannot be displayed');
 		this.sendPacket("refreshModel", {energy: this.data.energy, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z}});
 	},
 	destroy: function () {
-		//for(var i = 0; i < 4; i++)this.container.clearSlot('slot' + i);
 		if (this.data.NETWORK_ID != "f" && RSNetworks[this.data.NETWORK_ID]) {
 			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 			set_net_for_blocks(this, 'f');
@@ -1078,15 +1075,24 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		this.container.sendEvent("refreshGui", {isActive: this.data.isActive, capacity: this.getCapacity(), redstone_mode: this.data.redstone_mode, usage: this.data.usage, energy: this.data.energy, isCreative: this.data.isCreative, net_map: this.data.net_map});
 	},
 	client: {
+		load: function(){
+			//alert('Loaded: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			if(this.refreshModel)this.refreshModel();
+		},
+		refreshModel: function(eventData, connectedClient){
+			//alert('Refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			var newTexture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(100, this.networkData.getInt('energy')), this.networkData.getBoolean('isActive'));
+			RefinedStorage.mapTexture(this, newTexture);
+		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
+				//alert('Event refreshing model: ' + eventData.energy + ' : ' + eventData.isActive);
 				var newTexture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(100, eventData.energy), eventData.isActive);
 				RefinedStorage.mapTexture(eventData.coords, newTexture);
 			}
 		},
 		containerEvents: {
 			openGui: function(container, window, windowContent, eventData){
-				//Debug.m(eventData);
 				var networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
 				controller_other_data.networkData = networkData;
 				controller_other_data.net_map = eventData.net_map;
@@ -1094,8 +1100,6 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				var headerWindow = window.getWindow('header')
 				headerWindow.getContent().drawing[2].text = eventData.isCreative ? Translation.translate("Creative Controller") : Translation.translate("Controller");
 				headerWindow.forceRefresh();
-				//window.getWindow('main').forceRefresh();
-				//var content = container.getWindowContent();
 				windowContent.elements["slider_button"].y = windowContent.elements["slider_button"].start_y;
 				windowContent.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				controllerSwitchPage(1, container, controller_other_data, true);
@@ -1110,11 +1114,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	containerEvents: {
-		updateRedstoneMode: function(eventData, connectedClient) {
-			if(this.data.redstone_mode == undefined) this.data.redstone_mode = 0;
-			this.data.redstone_mode = this.data.redstone_mode >= 2 ? 0 : this.data.redstone_mode + 1;
-			if(!this.refreshRedstoneMode()) this.refreshGui();
-		}
+
 	}
 })
 EnergyTileRegistry.addEnergyTypeForId(BlockID.RS_controller, FE);

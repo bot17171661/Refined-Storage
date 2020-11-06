@@ -2,6 +2,7 @@ const DISPLAY = UI.getContext().getWindow().getWindowManager().getDefaultDisplay
 const WorkbenchRecipes = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchRecipeRegistry');
 const WorkbenchFieldAPI = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchFieldAPI');
 const zhekaCompiler = WRAP_JAVA('com.zhekasmirnov.innercore.mod.executable.Compiler');
+const _setTip = ModAPI.requireGlobal("MCSystem.setLoadingTip");
 
 IMPORT("EnergyNet");
 IMPORT("StorageInterface");
@@ -22,6 +23,17 @@ const RF = EnergyTypeRegistry.assureEnergyType("RF", 0.25);
 const RSgroup = ICRender.getGroup("RefinedStoragePECable");
 
 const GUIs = [];
+
+const runOnUiThread = function(func_, _interval){
+	if(_interval)return function(){
+		return UI.getContext().runOnUiThread(new java.lang.Runnable({
+			run: func_
+		}));
+	};
+	return UI.getContext().runOnUiThread(new java.lang.Runnable({
+		run: func_
+	}));
+}
 
 var EMPTY_SAVER = Saver.registerObjectSaver('THIS_IS_EMPTY_SAVER', {
 	read: function(){return null},
@@ -83,7 +95,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			var bck = {id: blockSource_.getBlockId(coordss.x, coordss.y, coordss.z)};
 			var isRsBlock = (RS_blocks.indexOf(bck.id) != -1);
 			if (bck.id == BlockID.RS_controller) {
-				World.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+				blockSource_.destroyBlock(coordss.x, coordss.y, coordss.z, true);
 				continue;
 			} else if (bck.id == BlockID.RS_cable) {
 				if(net_id != 'f' && RSNetworks[net_id]){
@@ -204,6 +216,15 @@ function getItemUid(item){
 	return item.id + '_' + item.data + (item.extra ? '_' + item.extra.getValue() : '');
 }
 
+function parseItemUid(itemUid){
+	var splits = itemUid.split('_');
+	return {
+		id: splits[0],
+		data: splits[1],
+		extra: splits[2] || null
+	}
+}
+
 function eventToScriptable(_event){
 	return {y:_event.y, x: _event.x, type: _event.type, _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
 }
@@ -309,35 +330,22 @@ const Disk = {
 	}
 }
 
-var RSNetworks = [];
+var itemsNamesMap = {};
 
-/* setInterval(function(){
-	alert(JSON.stringify(RSNetworks, null, '\t'));
-}, 60) */
+const getItemName = function(id, data){
+	if(!itemsNamesMap[id+','+data]) itemsNamesMap[id+','+data] = Item.getName(id, data);
+	return itemsNamesMap[id+','+data];
+}
+
+var RSNetworks = [];
 
 const RS_blocks = [];
 Callback.addCallback('PostLoaded', function(){
 	for(var i in RS_blocks)World.setBlockChangeCallbackEnabled(RS_blocks[i], true);
 })
 
-/* Callback.addCallback('DestroyBlock', function(coords, block){
-	if (block.id == BlockID.RS_cable) {
-		for(var i in RSNetworks){
-			if(RSNetworks[i][cts(coords)]) delete RSNetworks[i][cts(coords)];
-		}
-	}
-	if(block.id != BlockID.RS_controller && RS_blocks.indexOf(block.id) != -1)for(var i in sides){
-		var zCoords = {
-			x: coords.x + sides[i][0],
-			y: coords.y + sides[i][1],
-			z: coords.z + sides[i][2]
-		}
-		checkAndSetNetOnCoords(zCoords);
-	}
-}); */
 Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _blockSource){
 	_blockSource = BlockSource.getDefaultForDimension(_blockSource);
-	//alert(_blockSource.getBlockId(coords.x, coords.y, coords.z));
 	coords.blockSource = _blockSource;
 	if (oldBlock.id == BlockID.RS_cable) {
 		for(var i in RSNetworks){
@@ -359,7 +367,6 @@ Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _block
 	if(newBlock.id == BlockID.RS_cable){
 		if((controllerCoords = searchController(coords, true)) && (tile = World.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z, _blockSource)))tile.updateControllerNetwork();
 	}
-	//alert('Block changed: ' + cts(coords) + ' : ' + JSON.stringify(oldBlock) + ' : ' + JSON.stringify(newBlock));
 });
 
 const EnergyUse = {}
@@ -367,7 +374,6 @@ const EnergyUse = {}
 var temp_data = {};
 
 Callback.addCallback("LevelLeft", function () {
-	//alert('Leave from level');
 	temp_data = {};
 	RSNetworks = [];
 });
@@ -382,38 +388,56 @@ const RefinedStorage = {
 		params.blockInfo = {
 			id: id
 		}
+		if(!params.client) params.client = {};
+		if(!params.client.load) params.client.load = function(){
+			if(this.pre_load)this.pre_load();
+			if(this.refreshModel)this.refreshModel();
+			if(this.post_load)this.pre_load();
+		}
+		if(!params.client.unload) params.client.unload = function(){
+			if(this.pre_unload)this.pre_unload();
+			BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
+			if(this.post_unload)this.pre_unload();
+		}
 		if(!params.init){
 			params.init = function () {
 				//alert(cts(this) + ' : init');
+				if(this.pre_init)this.pre_init();
 				if(this.data.energy || this.data.energy === 0)this.networkData.putInt('energy', this.data.energy);
 				if(!this.data.createdCalled) {
 					this.data.NETWORK_ID = 'f';
-					this.networkData.putInt('NETWORK_ID', -1);
 					this.setActive(false);
+				} else {
+					var controller = searchController(this);
+					if (controller) {
+						var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
+						if (tile) {
+							tile.updateControllerNetwork();
+							//if (this.post_created) this.post_created();
+						}
+					}
 				}
-				this.data.block_data = World.getBlock(this.x, this.y, this.z).data;
-				if(this.refreshModel)this.refreshModel();
-				this.container.addClientOpenListener({
-					onOpen: function(container, name){
-
+				this.networkData.putInt('NETWORK_ID', this.data.NETWORK_ID >= 0 ? this.data.NETWORK_ID : -1);
+				this.data.block_data = this.blockSource.getBlockData(this.x, this.y, this.z);
+				this.blockInfo.data = this.data.block_data;
+				this.networkData.putInt('block_data', this.data.block_data);
+				this.networkData.putBoolean('isActive', this.data.isActive || false);
+				//if(this.refreshModel)this.refreshModel();
+				var tile = this;
+				this.container.addServerOpenListener({
+					onOpen: function(container, client){
+						if(tile.onWindowOpen){
+							tile.onWindowOpen(container, client);
+						}
 					}
 				})
-				/* this.container.setOnCloseListener({
-					onClose: function(container, window){
-						var tile = container.tileEntity;
-						if(tile && tile.onWindowClose){
-							tile.onWindowClose(container, window);
+				this.container.addServerCloseListener({
+					onClose: function(container, client){
+						if(tile.onWindowClose){
+							tile.onWindowClose(container, client);
 						}
 					}
-				});
-				this.container.setOnOpenListener({
-					onOpen: function(container, window){
-						var tile = container.tileEntity;
-						if(tile && tile.onWindowOpen){
-							tile.onWindowOpen(container, window);
-						}
-					}
-				}); */
+				})
 				if(this.post_init)this.post_init();
 				this.data.createdCalled = false;
 				this.networkData.sendChanges();
@@ -445,21 +469,22 @@ const RefinedStorage = {
 		if (!params.created) {
 			params.created = function () {
 				//alert(cts(this) + ' : created');
+				//this.data.block_data = this.blockSource.getBlockData(this.x, this.y, this.z);
 				this.data.createdCalled = true;
 				if (this.pre_created) this.pre_created();
-				var controller = searchController(this);
+				/* var controller = searchController(this);
 				if (controller) {
 					var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
 					if (tile) {
 						tile.updateControllerNetwork();
 						if (this.post_created) this.post_created();
 					}
-				}
+				} */
 			}
 		}
 		if (!params.setActive) {
-			params.setActive = function (state, forced) {
-				state = !!state;
+			params.setActive = function (state, forced, preventRefreshModel) {
+				state = this.data.NETWORK_ID != "f" ? !!state : false;
 				if(this.data.isActive == state) return false;
 				if (this.pre_setActive) if(this.pre_setActive(state)) return false;
 				if(state && !this.redstoneAllowActive(this.data.last_redstone_event)) return false;
@@ -467,12 +492,12 @@ const RefinedStorage = {
 					this.data.isActive = state;
 					this.networkData.putBoolean('isActive', state);
 					if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID][this.coords_id()].isActive = state
+					this.networkData.sendChanges();
+					if(this.refreshModel && !preventRefreshModel)this.refreshModel();
+					if (this.post_setActive) this.post_setActive(state);
+					if(this.refreshGui && !this.setActiveNotUpdateGui)this.refreshGui();
+					return true;
 				}
-				if(this.refreshModel)this.refreshModel();
-				this.networkData.sendChanges();
-				if (this.post_setActive) this.post_setActive(state);
-				if(this.refreshPageFull)this.refreshPageFull();
-				return true;
 			}
 		}
 		if(!params.redstone){
@@ -536,12 +561,18 @@ const RefinedStorage = {
 				return true;
 			}
 		}
+		if(!params.containerEvents) params.containerEvents = {};
+		if(!params.containerEvents.updateRedstoneMode)params.containerEvents.updateRedstoneMode = function(eventData, connectedClient) {
+			if(this.data.redstone_mode == undefined) this.data.redstone_mode = 0;
+			this.data.redstone_mode = this.data.redstone_mode >= 2 ? 0 : this.data.redstone_mode + 1;
+			if(!this.refreshRedstoneMode() && this.refreshGui) this.refreshGui();
+		}
 		this.paramsMap[id] = params;
 		TileEntity.registerPrototype(id, params);
 	},
 	copy: function(id1, id2, params){
 		RSgroup.add(id2, -1);
-		if(!this.paramsMap[id1]) throw '[RefinedStorageError RefinedStorage.copy] TileEntity with this id is not registered';
+		if(!this.paramsMap[id1]) throw '[RefinedStorageError - RefinedStorage.copy] TileEntity with this id is not registered';
 		var params1 = Object.assign({}, this.paramsMap[id1]);
 		delete params1.tick;
 		TileEntity.registerPrototype(id2, Object.assign(params1, params));
@@ -574,95 +605,103 @@ const RefinedStorage = {
 function testButtons(elementsS_, initFunc_){
 	if(!Config.dev) return;
 	var UIHeight = Number(UI.getScreenHeight());
-	var y = 562-80-50;
+	var y = 20;//562-80-50;
+	var start_x = 630;//400 + 200;
+	elementsS_['fps'] = {
+		type: "fps", 
+		x: 10,
+		y: 10,
+		z: 5
+	}
 	elementsS_["testButton0"] = {
 		type: "button",
-		x: 400 + 200,
+		x: start_x,
 		y: y,
 		z: 100,
 		bitmap: 'RS_empty_button',
 		bitmap2: 'RS_empty_button_pressed',
 		scale:2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				UIHeight -= 100;
-				elementsS_['testText2'].text = UIHeight + '';
+				//elementsS_['testText2'].text = UIHeight + '';
+				itemContainerUiHandler.setBinding('testText2', 'text', UIHeight + '');
 				UI.getScreenHeight = function(){
 					return UIHeight;
 				}
 				initFunc_();
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 			}
 		}
 	}
 	elementsS_["testButton1"] = {
 		type: "button",
-		x: 450 + 200,
+		x: start_x + 50,
 		y: y,
 		z: 100,
 		bitmap: 'RS_empty_button',
 		bitmap2: 'RS_empty_button_pressed',
 		scale:2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				UIHeight -= 10;
-				elementsS_['testText2'].text = UIHeight + '';
+				itemContainerUiHandler.setBinding('testText2', 'text', UIHeight + '');
 				UI.getScreenHeight = function(){
 					return UIHeight;
 				}
 				initFunc_();
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 			}
 		}
 	}
 	elementsS_['testText2'] = {
 		type: "text",
-		x: 490 + 200,
-		y: y,
+		x: start_x + 100,
+		y: y + 5,
 		z: 100,
 		text: UI.getScreenHeight() + ''
 	}
 	elementsS_["testButton3"] = {
 		type: "button",
-		x: 550 + 200,
+		x: start_x + 180,
 		y: y,
 		z: 100,
 		bitmap: 'RS_empty_button',
 		bitmap2: 'RS_empty_button_pressed',
 		scale:2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				UIHeight += 10;
-				elementsS_['testText2'].text = UIHeight + '';
+				itemContainerUiHandler.setBinding('testText2', 'text', UIHeight + '');
 				UI.getScreenHeight = function(){
 					return UIHeight;
 				}
 				initFunc_();
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 			}
 		}
 	}
 	elementsS_["testButton4"] = {
 		type: "button",
-		x: 600 + 200,
+		x: start_x + 230,
 		y: y,
 		z: 100,
 		bitmap: 'RS_empty_button',
 		bitmap2: 'RS_empty_button_pressed',
 		scale:2,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
+			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				UIHeight += 100;
-				elementsS_['testText2'].text = UIHeight + '';
+				itemContainerUiHandler.setBinding('testText2', 'text', UIHeight + '');
 				UI.getScreenHeight = function(){
 					return UIHeight;
 				}
 				initFunc_();
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 			}
 		}
 	}

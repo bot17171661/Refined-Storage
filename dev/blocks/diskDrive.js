@@ -198,13 +198,10 @@ function initDDelements() {
 		bitmap2: 'RS_empty_button_pressed',
 		scale: cons*0.7/20,
 		clicker: {
-			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				if(tileEntity.data.redstone_mode == undefined) tileEntity.data.redstone_mode = 0;
-				tileEntity.data.redstone_mode = tileEntity.data.redstone_mode >= 2 ? 0 : tileEntity.data.redstone_mode + 1;
-				elementsGUI_dd["image_redstone"].bitmap = 'redstone_GUI_' + tileEntity.data.redstone_mode;
-				tileEntity.refreshRedstoneMode();
+			onClick: function (itemContainerUiHandler, container, element) {
+				container.sendEvent("updateRedstoneMode", {});
 			},
-			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
+			onLongClick: function (itemContainerUiHandler, container, element) {
 			}
 		}
 	}
@@ -228,9 +225,9 @@ function initDDelements() {
 		scale: cons*0.7/20,
 		clicker: {
 			onClick: function (position, container, tileEntity, window, canvas, scale) {
-				tileEntity.data.access_type = tileEntity.data.access_type >= 2 ? 0 : tileEntity.data.access_type + 1;
+				/* tileEntity.data.access_type = tileEntity.data.access_type >= 2 ? 0 : tileEntity.data.access_type + 1;
 				elementsGUI_dd["image_access_type"].bitmap = 'RS_dd_access_' + tileEntity.data.access_type;
-				tileEntity.refreshRedstoneMode();
+				tileEntity.refreshRedstoneMode(); */
 			},
 			onLongClick: function (position, container, tileEntity, window, canvas, scale) {
 			}
@@ -248,7 +245,6 @@ function initDDelements() {
 	}
 }
 initDDelements();
-testButtons(elementsGUI_dd, initDDelements);
 
 var diskDriveGUI = new UI.StandartWindow({
 	standart: {
@@ -270,6 +266,20 @@ var diskDriveGUI = new UI.StandartWindow({
 	elements: elementsGUI_dd
 });
 GUIs.push(diskDriveGUI);
+testButtons(diskDriveGUI.getWindow('header').getContent().elements, initDDelements);
+
+var getDiskDriveTextItemsWidth = function(){
+	return 0;
+};
+(function(){
+	var elementIns = diskDriveGUI.getWindow('main').getElements().get('items');
+	var clazz = elementIns.getClass();
+	var field = clazz.getDeclaredField("textBounds");
+	field.setAccessible(true);
+	getDiskDriveTextItemsWidth = function(){
+		return field.get(elementIns).width();
+	}
+})();
 
 RefinedStorage.createTile(BlockID.diskDrive, {
 	defaultValues: {
@@ -284,37 +294,58 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		refreshModel: false,
 		access_type: 0
 	},
-	getTextItemsWidth: function(){
-		return 0;
-	},
-    /* getTransportSlots: function() {
-        return {
-            input: ["slot0", "slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7"],
-            //output: ["slot"]
-        };
-    }, */
+	useNetworkItemContainer: true,
 	post_init: function(){
 		if(!this.data.disks_percents)this.data.disks_percents = [];
 		this.data.iinit = true;
-		var elementIns = diskDriveGUI.getWindow('main').getContentProvider().elementMap.get('items');
-		var clazz = elementIns.getClass();
-		var field = clazz.getDeclaredField("textBounds");
-		field.setAccessible(true);
-		this.getTextItemsWidth = function(){
-			return field.get(elementIns).width();
-		}
+		this.networkData.putString('slots', JSON.stringify(this.getDiskDatas()));
+		/* this.container.setGlobalAddTransferPolicy({
+			transfer: function(container, slot, id, count, data, extra, __long){
+				alert('Transfering slot: ' + slot + ' : ' + id + ' : ' + count + ' : ' + data);
+				return count;
+			}
+		});
+		this.container.setGlobalGetTransferPolicy({
+			transfer: function(container, slot, id, count, data, extra, __long){
+				alert('Transfering GET slot: ' + slot + ' : ' + id + ' : ' + count + ' : ' + data);
+				return count;
+			}
+		}); */
 	},
 	post_setActive: function(state){
 		if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID].info.updateItems();
 	},
-	click: function () {
-		if (Entity.getSneaking(Player.get())) return false;
-		if(this.container.isOpened()) return true;
-		this.container.openAs(diskDriveGUI);
-		var content = this.container.getGuiContent();
-		content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (this.data.redstone_mode || 0);
-		content.elements["image_access_type"].bitmap = 'RS_dd_access_' + this.data.access_type;
+	click: function (id, count, data, coords, player, extra) {
+		if (Entity.getSneaking(player)) return false;
+		var client = Network.getClientForPlayer(player);
+		if(!client) return true;
+		if (this.container.getNetworkEntity().getClients().contains(client)) return true;
+		this.container.openFor(client, "main");
+		var _data = {
+			name: this.networkData.getName() + '', 
+			isActive: this.data.isActive, 
+			redstone_mode: this.data.redstone_mode, 
+			access_type: this.data.access_type
+		};
+		this.container.sendEvent(client, "openGui", _data); 
 		return true;
+	},
+	getScreenByName: function(screenName) {
+		if(screenName == 'main')return diskDriveGUI;
+	},
+	getDiskDatas: function(){
+		var diskDatas = [];
+		for (var i = 0; i < 8; i++) {
+			var item = this.container.getSlot('slot' + i);
+			if (!Disk.items[item.id]) {
+				diskDatas.push({id: 0, data: 0, storage: 0, items_stored: 0});
+				continue;
+			}
+			if (item.data == 0) item.data = DiskData.length;
+			var disk_data = Disk.getDiskData(item);
+			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage, items_stored: disk_data.items_stored});
+		}
+		return diskDatas;
 	},
 	tick: function () {
 		if(this.data.refreshModel){
@@ -324,16 +355,19 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		var storage = 0;
 		var disks = 0;
 		var stored = 0;
+		var diskDatas = [];
 		for (var i = 0; i < 8; i++) {
 			var item = this.container.getSlot('slot' + i);
 			var lastDiskPercent = this.data.disks_percents[i];
 			if (!Disk.items[item.id]) {
 				if(lastDiskPercent != undefined)this.data.refreshModel = true;
 				delete this.data.disks_percents[i];
+				diskDatas.push({id: 0, data: 0, storage: 0, items_stored: 0});
 				continue;
 			}
 			if (item.data == 0) item.data = DiskData.length;
 			var disk_data = Disk.getDiskData(item);
+			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage, items_stored: disk_data.items_stored});
 			var diskPercent = disk_data.items_stored/disk_data.storage;
 			if(lastDiskPercent == undefined || ((lastDiskPercent < 0.75 && diskPercent >= 0.75) || (lastDiskPercent >= 0.75 && diskPercent < 0.75) || (lastDiskPercent < 1 && diskPercent >= 1)))this.data.refreshModel = true;
 			disks++;
@@ -341,18 +375,21 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			stored += disk_data.items_stored;
 			this.data.disks_percents[i] = diskPercent;
 		}
-		if((this.isWorkAllowed()) && (this.data.disks != disks || this.data.storage != storage || this.data.stored != stored)) RSNetworks[this.data.NETWORK_ID].info.updateItems();
+		if(this.data.disks != disks || this.data.storage != storage || this.data.stored != stored) {
+			if(this.isWorkAllowed() && this.data.disks != disks)RSNetworks[this.data.NETWORK_ID].info.updateItems();
+			this.networkData.putString('slots', JSON.stringify(diskDatas));
+			this.networkData.sendChanges();
+		}
 		this.data.disks = disks;
 		this.data.storage = String(storage);
 		this.data.stored = stored;
-		if (this.container.isOpened()) {
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			this.container.setScale('scale', stored == 0 ? 0 : stored / storage);
 			this.container.setText('percents', stored == 0 ? '0%' : Math.ceil(stored / (storage / 100)) + '%');
 			this.container.setText('items', (stored > 999 ? (stored > 999999 ? ((stored2 = (stored/1000000))%1 ? stored2.toFixed(1) : stored2) + 'M' : ((stored2 = (stored/1000))%1 ? stored2.toFixed(1) : stored2) + 'K') : stored) + (storage != Infinity ? '/' + (storage > 999 ? (storage > 999999 ? ((storage2 = (storage/1000000))%1 ? storage2.toFixed(1) : storage2) + 'M' : ((storage2 = (storage/1000))%1 ? storage2.toFixed(1) : storage2) + 'K') : storage) : ''));
-			var element = this.container.getElement('items');
-			if(element)element.setPosition(Math.max(elementsGUI_dd['items'].start_x - this.getTextItemsWidth()/2, elementsGUI_dd['scale'].x), elementsGUI_dd['items'].y);
+			this.container.sendChanges();
 		}
-		//if (!this.isWorkAllowed()) return;
+		return;
 	},
 	post_update_network: function(net_id){
 		if(this.data.iinit && this.isWorkAllowed()){
@@ -361,17 +398,17 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		}
 	},
 	refreshModel: function(){
-		var disks_data = [];
-		for (var i = 0; i < 8; i++) {
-			var item2 = this.container.getSlot('slot' + i);
-			if (!Disk.items[item2.id]) {
-				disks_data.push({id: 0, data: 0, storage: 0, items_stored: 0});
-				continue;
-			}
-			var disk_data = Disk.getDiskData(item2);
-			disks_data.push({id: item2.id, data: item2.data, storage: disk_data.storage, items_stored: disk_data.items_stored});
-		}
-		mapDisks(this, this.data.block_data, disks_data, this.data.isActive);
+		if(!this.networkEntity) return Logger.Log(Item.getName(this.blockInfo.id, this.blockInfo.data) + ' model on: ' + cts(this) + ' cannot be displayed');
+		this.sendPacket("refreshModel", {block_data: this.data.block_data, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z, dimension: this.dimension}});
+	},
+	refreshGui: function(){
+		var _data = {
+			name: this.networkData.getName() + '', 
+			isActive: this.data.isActive, 
+			redstone_mode: this.data.redstone_mode, 
+			access_type: this.data.access_type
+		};
+		this.container.sendEvent("refreshGui", _data);
 	},
 	getItems: function () {
 		if (!this.isWorkAllowed()) return {};
@@ -388,6 +425,36 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	},
 	pre_destroy: function(){
 		if(RSNetworks && RSNetworks[this.data.NETWORK_ID] && RSNetworks[this.data.NETWORK_ID].info)RSNetworks[this.data.NETWORK_ID].info.updateItems()
+	},
+	client: {
+		refreshModel: function(){
+			var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+			mapDisks(this, this.networkData.getInt('block_data'), disks_data, this.networkData.getBoolean('isActive'));
+		},
+		events: {
+			refreshModel: function(eventData, connectedClient){
+				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+				mapDisks(eventData.coords, eventData.block_data, disks_data, eventData.isActive);
+			}
+		},
+		containerEvents: {
+			openGui: function(container, window, content, eventData){
+				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
+				content.elements["image_access_type"].bitmap = 'RS_dd_access_' + eventData.access_type;
+				setIntervalLocal(function(){
+					if(!window.isOpened()) return true;
+					var element = window.getWindow('main').getElements().get('items');
+					element.setPosition(Math.max(content.elements['items'].start_x - getDiskDriveTextItemsWidth()/2, content.elements['scale'].x), content.elements['items'].y);
+				}, 1);
+			},
+			refreshGui:function(container, window, content, eventData){
+				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
+				content.elements["image_access_type"].bitmap = 'RS_dd_access_' + eventData.access_type;
+			}
+		}
+	},
+	containerEvents: {
+
 	}
 });
 

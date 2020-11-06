@@ -333,6 +333,9 @@ var craftingGridGUI = new UI.StandartWindow({
 	elements: _elementsGUI_craftingGrid
 });
 GUIs.push(craftingGridGUI);
+testButtons(craftingGridGUI.getWindow('header').getContent().elements, function(){
+	grid_set_elements(360 + 109, 70, 49, 0, _elementsGUI_craftingGrid);
+});
 
 /* var __elementMap_ = craftingGridGUI.getWindow('main').getContentProvider().elementMap;
 for(var i = 0; i < _elementsGUI_craftingGrid["slots_count"]; i++){

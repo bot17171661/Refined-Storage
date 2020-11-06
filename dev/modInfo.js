@@ -319,11 +319,11 @@
     var textsArray = ['modLinks', 'modLink1', 'modLink2'];
     var textsPadding = 15;
     thisWindows["info"].setEventListener({
-        onOpen: function(){
+        onOpen: function(window12){
             if(!firstOpen) return;
             firstOpen = false;
             for(var i = 0; i <= textsArray.length; i++){
-                var elementIns = thisWindows["info"].getContentProvider().elementMap.get(textsArray[i]);
+                var elementIns = window12.getElements().get(textsArray[i]);
                 var clazz = elementIns.getClass();
                 var field = clazz.getDeclaredField("textBounds");
                 field.setAccessible(true);
@@ -404,6 +404,8 @@
     }
 
     if(!Config.changelogEnabled) return;
+
+    _setTip('[RefinedStoragePE] Getting versions info');
     
     function getUrlContent(_url){
         var isError = {data: undefined};
@@ -413,7 +415,7 @@
             result = '';
             jSetTimeout(function(){//522;
                 if(result.length == 0 && !isError.data){
-                    alert('Your internet connection is very slow\nIf you do not want to see this message and want make loading faster then change "changelogEnabled" to "false" in RefinedStoragePE config file');
+                    alert('[RefinedStoragePE] Your internet connection is very slow\nIf you do not want to see this message and want make loading faster then change "changelogEnabled" to "false" in RefinedStoragePE config file');
                 }
             }, 5000);
             var _URL_ = new JAVA_URL(_url);
@@ -435,19 +437,20 @@
         }
     }
 
+    var versionsMap = getUrlContent('https://raw.githubusercontent.com/bot17171661/RefinedStorageChangelog/master/map.txt');
+    if(versionsMap.data)versionsMap = JSON.parse(versionsMap.data);
+    else return;
+
     function getNewestVersion(){
-        var data = getUrlContent('https://icmods.mineprogramming.org/mod?id=' + MODID);
+        /* var data = getUrlContent('https://icmods.mineprogramming.org/mod?id=' + MODID);
         if(data.error)alert("Error: " + JSON.stringify(data.error));
         if(data.error) return 0;
         var _code = '<span class="version">';
         var index1 = data.data.indexOf(_code) + _code.length + 1;
         var string = data.data.substr(index1, data.data.indexOf(']', index1) - index1);
-        return string;
+        return string.replace(/[^A-Za-z0-9_\s\.]/g, ''); */
+        return versionsMap[0];
     }
-
-    var versionsMap = getUrlContent('https://raw.githubusercontent.com/bot17171661/RefinedStorageChangelog/master/map.txt');
-    if(versionsMap.data)versionsMap = JSON.parse(versionsMap.data);
-    else return;
     
     function parseVersion(_version){
         if(versionsMap.indexOf(_version) == -1) return false;
@@ -595,12 +598,12 @@
             jClearInterval(jinterval);
         },
         onOpen: function(){
-            jinterval = jSetInterval(function(){
-                var element = thisWindows['main'].getContentProvider().elementMap.get("newVersionImage");
+            jinterval = jSetInterval(runOnUiThread(function(){
+                var element = thisWindows['main'].getElements().get("newVersionImage");
                 if(element)createAnim([0, 5, 0], 200, function(value){
                     element.setPosition(mainElements['newVersionImage'].x, mainElements['newVersionImage'].y - value);
                 })
-            }, 3000)
+            }, true), 3000)
         }
     })
     Callback.addCallback('PostLoaded', function(){
