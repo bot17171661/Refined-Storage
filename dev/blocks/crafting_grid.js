@@ -617,53 +617,63 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		return true;
 	},
 	tick: function () {
-		if (this.container.isOpened() && this.data.NETWORK_ID != "f") {
-			var content = this.container.getGuiContent();
-			content.elements["slider_button"].bitmap = this.pages() <= 1 ? 'slider_buttonOff' : 'slider_buttonOn';
+		return;
+		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			if(this.data.refreshCurPage){
-				this.refreshPageFull();
+				this.items();
+				this.refreshGui();
 				this.data.refreshCurPage = false;
 			}
-			if(this.data.refreshCrafts && this.data.selectedRecipe){
-				this.post_items();
-				this.selectRecipe(this.data.selectedRecipe.javaRecipe);
-				this.data.refreshCrafts = false;
-			}
 		}
-		if(!this.isWorkAllowed()) return;
-		if(this.data.pushDeleteEvents)for(var i in this.data.pushDeleteEvents){
-			var event = this.data.pushDeleteEvents[i];
-			if(!event) {
-				delete this.data.pushDeleteEvents[i];
-				continue;
-			}
-			if(event.type == 'push'){
-				var item = Player.getInventorySlot(event.slot);
-				if(item.id == 0) return;
-				var count = Math.min(event.count, item.count);
-				var pushed = this.pushItem(item, count);
-				if(pushed == count){
-					Player.setInventorySlot(event.slot, 0, 0, 0);
-					this.refreshPageFull();
-				} else if(pushed < count){
-					Player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
-					this.refreshPageFull();
+		for(var p in this.data.pushDeleteEvents){
+			var player = new PlayerActor(Number(p));
+			//alert('Checking event of: ' + p);
+			for(var i in this.data.pushDeleteEvents[p]){
+				var event = this.data.pushDeleteEvents[p][i];
+				//alert('Event: ' + JSON.stringify(event));
+				if(!event) {
+					delete this.data.pushDeleteEvents[p][i];
+					continue;
 				}
-				delete this.data.pushDeleteEvents[i];
-			}
-			if(event.type == 'delete'){
-				var item = event.item;
-				var itemMaxStack = Item.getMaxStack(item.id);
-				var this_item;
-				if(item && ((emptySlots = searchItem(0, -1, true)).length > 0 || ((this_item = searchItem(item.id, item.data, false, true)) && this_item.extra == item.extra && this_item.count < itemMaxStack))){
-					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count, itemMaxStack*emptySlots.length);
-					if((res = this.deleteItem(item, count)) < count) {
-						Player.addItemToInventory(item.id, count - res, item.data, item.extra || null, false);
-						this.refreshPageFull();
+				if(event.type == 'push'){
+					var item = player.getInventorySlot(event.slot);
+					if(item.id == 0) return;
+					var count = Math.min(event.count, item.count);
+					var pushed = this.pushItem(item, count);
+					if(pushed < count){
+						player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
 					}
+					if((_index = this.originalItemsMap().indexOf(getItemUid(item))) != -1)this.container.markSlotDirty(_index+'slot');
+					this.items();
+					this.refreshGui(false, false, item.count <= count || event.updateFull);
+					/* var iterator = this.container.getNetworkEntity().getClients().iterator();
+					while(iterator.hasNext()){
+						var _client = iterator.next();
+						if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
+					} */
+					delete this.data.pushDeleteEvents[p][i];
 				}
-				delete this.data.pushDeleteEvents[i];
+				if(event.type == 'delete'){
+					var item = event.item;
+					var itemMaxStack = Item.getMaxStack(item.id);
+					var this_item = searchItem(item.id, item.data, false, true, p);
+					if(item){
+						var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+						if((res = this.deleteItem(item, count, true)) < count) {
+							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+							this.items();
+							this.refreshGui(false, false, item.count <= count || event.updateFull);
+							/* var iterator = this.container.getNetworkEntity().getClients().iterator();
+							while(iterator.hasNext()){
+								var _client = iterator.next();
+								if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
+							} */
+						}
+					}
+					delete this.data.pushDeleteEvents[p][i];
+				}
 			}
+			delete this.data.pushDeleteEvents[p];
 		}
 	},
 	craftsSwitchFullPage: function (page) {

@@ -6,6 +6,7 @@ translate.js
 
 items/disk.js
 items/craftItems.js
+items/upgrades.js
 
 blocks/diskDrive.js
 blocks/controller.js
@@ -13,6 +14,7 @@ blocks/grid.js
 blocks/crafting_grid.js
 blocks/cable.js
 blocks/craftBlocks.js
+blocks/interface.js
 
 crafts.js
 modInfo.js

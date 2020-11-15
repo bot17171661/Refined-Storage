@@ -386,7 +386,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			this.container.setScale('scale', stored == 0 ? 0 : stored / storage);
 			this.container.setText('percents', stored == 0 ? '0%' : Math.ceil(stored / (storage / 100)) + '%');
-			this.container.setText('items', (stored > 999 ? (stored > 999999 ? ((stored2 = (stored/1000000))%1 ? stored2.toFixed(1) : stored2) + 'M' : ((stored2 = (stored/1000))%1 ? stored2.toFixed(1) : stored2) + 'K') : stored) + (storage != Infinity ? '/' + (storage > 999 ? (storage > 999999 ? ((storage2 = (storage/1000000))%1 ? storage2.toFixed(1) : storage2) + 'M' : ((storage2 = (storage/1000))%1 ? storage2.toFixed(1) : storage2) + 'K') : storage) : ''));
+			this.container.setText('items', cutNumber(stored) + (storage != Infinity ? '/' + cutNumber(storage) : ''));
 			this.container.sendChanges();
 		}
 		return;

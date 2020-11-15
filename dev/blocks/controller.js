@@ -488,7 +488,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		isCreative: false,
 		networkDataUpdate: false,
 		containerUpdate: false,
-		ticks: 0
+		ticks: 0,
+		updateControllerNetwork: false
 	},
 	useNetworkItemContainer: true,
 	created: function () {
@@ -630,6 +631,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				},
 				pushItem: function(item, count, nonUpdate){
 					count = count || item.count;
+					if(RSbannedItems.indexOf(item.id) != -1){
+						if(Config.dev)Logger.Log('Hey you shouldn t push this item:   id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored + count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) - count) + ')', 'RefinedStorageDebug');
+						return count;
+					}
 					if(!this.itemCanBePushed(item, count)) return count;
 					var itemUid = getItemUid(item);
 					//var count1 = Math.min(count, this.storage - this.stored);
@@ -704,7 +709,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					return count; */
 					if(Config.dev)Logger.Log('Pushing item:  id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored + count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) - count) + ')', 'RefinedStorageDebug');
 					for(var i in _data){
-						if(_data[i].pushItemFunc)count -= _data[i].pushItemFunc(item, count) || 0;
+						if(_data[i].pushItemFunc)count = ((__answ = _data[i].pushItemFunc(item, count)) != undefined ? __answ : count);
 						if(count <= 0) return 0;
 					}
 					if((index = this.items_map.indexOf(itemUid)) != -1){
@@ -815,7 +820,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					var count1 = Math.min(count, this.stored);
 					if(Config.dev)Logger.Log('Deleting item:  id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored - count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) + count) + ')', 'RefinedStorageDebug');
 					for(var i in _data){
-						if(_data[i].deleteItemFunc)_data[i].deleteItemFunc(item, count);
+						if(_data[i].deleteItemFunc)count = _data[i].deleteItemFunc(item, count) || count;
+						if(count <= 0) return 0;
 					}
 					if((num = this.items_map.indexOf(itemUid)) != -1){
 						if(count >= this.items[num].count){
@@ -869,7 +875,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							return count;
 						}
 					} else {
-						alert('Hey, are you doing something wrong');
+						alert('Hey are you doing something wrong');
 					}
 					if(!nonUpdate)this.refreshOpenedGrids();
 				}
@@ -1009,6 +1015,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				this.data.containerUpdate = false;
 			}
 			return;
+		}
+		if(this.data.updateControllerNetwork){
+			this.updateControllerNetwork();
+			this.data.updateControllerNetwork = false;
 		}
 		this.updateNetMap();
 		var usage = this.data.usage;

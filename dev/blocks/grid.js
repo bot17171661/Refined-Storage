@@ -220,6 +220,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						if(!slotItem || slotItem.id == 0) return;
 						var _count = 1;
 						var updateFull = false;
+						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + '(' + _num + ') ; lastPage: ' + gridData.lastPage + ' ; count: ' + _count + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 						if(slotItem.count == _count) {
 							itemContainer.setSlot(slot, 0, 0, 0);
 							gridData.slotsKeys.splice(_num, 1);
@@ -229,8 +230,8 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						} else {
 							if(gridData.sort == 0){
 								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
-									for(var decNum = -1; slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
-									decNum++;
+									//for(var decNum = -1; itemContainer.slots[gridData.slotsKeys[_num + decNum]] && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
+									//decNum++;
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 									//gridData.slotsKeys.splice(_num, 1);
 									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
@@ -254,7 +255,6 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						gridData.networkData.putInt(slot, currentCount + _count);
 						gridData.networkData.putBoolean('update', true);
 						gridData.networkData.putBoolean('updateFull'+slot, updateFull);
-						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + ' ; lastPage: ' + gridData.lastPage + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 					},
 					onLongClick: function (itemContainerUiHandler, itemContainer, element) {
 						var itemContainer = itemContainer.slots ? itemContainer : element;
@@ -267,6 +267,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						var this_item = searchItem(slotItem.id, slotItem.data, false, true);
 						var _count = this_item && this_item.count < maxStack && this_item.extra == slotItem.extra ? Math.min(slotItem.count, maxStack - this_item.count) : Math.min(slotItem.count, maxStack);
 						var updateFull = false;
+						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + '(' + _num + ') ; lastPage: ' + gridData.lastPage + ' ; count: ' + _count + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 						if(slotItem.count <= _count) {
 							itemContainer.setSlot(slot, 0, 0, 0);
 							gridData.slotsKeys.splice(_num, 1);
@@ -276,8 +277,8 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						} else {
 							if(gridData.sort == 0){
 								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
-									for(var decNum = -1; slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
-									decNum++;
+									//for(var decNum = -1; itemContainer.slots[gridData.slotsKeys[_num + decNum]] && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
+									//decNum++;
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 									//gridData.slotsKeys.splice(_num, 1);
 									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
@@ -301,7 +302,6 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						gridData.networkData.putInt(slot, currentCount + _count);
 						gridData.networkData.putBoolean('update', true);
 						gridData.networkData.putBoolean('updateFull'+slot, updateFull);
-						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + ' ; lastPage: ' + gridData.lastPage + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
 					}
 				},
 				size: cons + 1
@@ -538,7 +538,7 @@ inv_elements.elements["_CLICKFRAME_"] = {
 			} else {
 				var count = Math.min(Item.getMaxStack(item.id), gridData.disksStorage - gridData.disksStored, item.count);
 			}
-			if(Config.dev)Logger.Log('Pushing item: ' + JSON.stringify(item) + ' ; count: ' + count + ' ; slot: ' + slot_id, 'RefinedStorageDebug');
+			if(Config.dev)Logger.Log('Grid local pushing item: ' + JSON.stringify(item) + ' ; count: ' + count + ' ; slot: ' + slot_id, 'RefinedStorageDebug');
 			var slotFounded = false;
 			for(var i in gridData.slotsKeys){
 				var _slotName = gridData.slotsKeys[i];
@@ -621,28 +621,23 @@ var gridFuncs = {
 		if (reverse) {
 			if (type == 2) {
 				return function (a, b) { 
-					if(slots[a].id == 0) return -1;
-					if(slots[b].id == 0) return 1;
 					return slots[b].id - slots[a].id 
 				};
 			} else if (type == 0) {
-				return function (a, b) { 
-					if(slots[a].count == 0) return -1;
-					if(slots[b].count == 0) return 1;
-					return slots[b].count - slots[a].count 
+				return function (a, b) {
+					var slot1 = slots[a], slot2 = slots[b];
+					return slot1.count == 0 || slot2.count == 0 ? slot2.count - slot1.count : slot1.count - slot2.count;
 				};
 			} else if (type == 1) {
 				return function (a, b) {
-					var slot1 = slots[a];
-					var slot2 = slots[b];
-					if(slot1.id == 0) return -1;
-					if(slot2.id == 0) return 1;
+					var slot1 = slots[a], slot2 = slots[b];
+					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
 					var name1 = getItemName(slot1.id, slot1.data);
 					var name2 = getItemName(slot2.id, slot2.data);
-					if (name2 > name1) {
+					if (name1 > name2) {
 						return 1;
 					}
-					if (name2 < name1) {
+					if (name1 < name2) {
 						return -1;
 					}
 					return 0;
@@ -651,28 +646,23 @@ var gridFuncs = {
 		} else {
 			if (type == 2) {
 				return function (a, b) {
-					if(slots[a].id == 0) return 1;
-					if(slots[b].id == 0) return -1;
-					return slots[a].id - slots[b].id 
+					var slot1 = slots[a], slot2 = slots[b];
+					return slot1.id == 0 || slot2.id == 0 ? slot2.id - slot1.id : slot1.id - slot2.id 
 				};
 			} else if (type == 0) {
 				return function (a, b) { 
-					if(slots[a].count == 0) return 1;
-					if(slots[b].count == 0) return -1;
-					return slots[a].count - slots[b].count;
+					return slots[b].count - slots[a].count 
 				};
 			} else if (type == 1) {
 				return function (a, b) {
-					var slot1 = slots[a];
-					var slot2 = slots[b];
-					if(slot1.id == 0) return 1;
-					if(slot2.id == 0) return -1;
+					var slot1 = slots[a], slot2 = slots[b];
+					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
 					var name1 = getItemName(slot1.id, slot1.data);
 					var name2 = getItemName(slot2.id, slot2.data);
-					if (name1 > name2) {
+					if (name2 > name1) {
 						return 1;
 					}
-					if (name1 < name2) {
+					if (name2 < name1) {
 						return -1;
 					}
 					return 0;
@@ -749,16 +739,17 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					if(item.id == 0) return;
 					var count = Math.min(event.count, item.count);
 					var pushed = this.pushItem(item, count);
-					if(pushed == count){
-						player.setInventorySlot(event.slot, 0, 0, 0);
-					} else if(pushed < count){
+					if(pushed < count){
 						player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
 					}
-					var iterator = this.container.getNetworkEntity().getClients().iterator();
+					if((_index = this.originalItemsMap().indexOf(getItemUid(item))) != -1)this.container.markSlotDirty(_index+'slot');
+					this.items();
+					this.refreshGui(false, false, item.count <= count || event.updateFull);
+					/* var iterator = this.container.getNetworkEntity().getClients().iterator();
 					while(iterator.hasNext()){
 						var _client = iterator.next();
 						if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-					}
+					} */
 					delete this.data.pushDeleteEvents[p][i];
 				}
 				if(event.type == 'delete'){
@@ -770,11 +761,12 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 						if((res = this.deleteItem(item, count, true)) < count) {
 							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
 							this.items();
-							var iterator = this.container.getNetworkEntity().getClients().iterator();
+							this.refreshGui(false, false, item.count <= count || event.updateFull);
+							/* var iterator = this.container.getNetworkEntity().getClients().iterator();
 							while(iterator.hasNext()){
 								var _client = iterator.next();
 								if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-							}
+							} */
 						}
 					}
 					delete this.data.pushDeleteEvents[p][i];
@@ -806,7 +798,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
-		var items = RSNetworks[this.data.NETWORK_ID].info.items;
+		var items = this.originalItems();
 		var slotsKeys = Object.keys(this.container.slots);
 		for(var i = 0; i < Math.max(slotsKeys.length, items.length); i++){
 			var slot = this.container.getSlot(i+'slot');
@@ -870,7 +862,6 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	post_destroy: function () {
 		delete temp_data[this.coords_id()];
-		this.container.slots = {};
 		for(var i in this.container.slots){
 			this.container.clearSlot(i);
 		}
@@ -886,7 +877,6 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 			NETWORK_ID: this.data.NETWORK_ID,
 			redstone_mode: this.data.redstone_mode,
 			sort: this.data.sort,
-			redstone_mode: this.data.redstone_mode,
 			reverse_filter: this.data.reverse_filter,
 			refresh: !first,
 			updateFilters: first || updateFilters,
@@ -906,7 +896,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	client: {
 		refreshModel: function(){
-			alert('Local refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			//alert('Local refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive'));
 			var render = new ICRender.Model();
 			var model = BlockRenderer.createTexturedBlock(getGridTexture(this.networkData.getInt('block_data'), this.networkData.getBoolean('isActive')));
 			render.addEntry(model);
@@ -942,7 +932,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		},
 		events: {
 			refreshModel: function(eventData, packetExtra) {
-				alert('Event refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive') + ' : ' + eventData.isActive);
+				//alert('Event refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive') + ' : ' + eventData.isActive);
 				var render = new ICRender.Model();
 				var model = BlockRenderer.createTexturedBlock(getGridTexture(eventData.block_data, eventData.isActive));
 				render.addEntry(model);

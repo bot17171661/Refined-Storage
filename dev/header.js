@@ -9,9 +9,14 @@ IMPORT("StorageInterface");
 
 var Config = {
 	reload: function () {
-		reload = Config.reload;
+		var reload = Config.reload;
+		var write = Config.write;
 		Config = FileTools.ReadJSON(__dir__ + 'config.json');
 		Config.reload = reload;
+		Config.write = write;
+	},
+	write: function(){
+		FileTools.WriteJSON(__dir__ + 'config.json', this, true);
 	}
 }
 Config.reload();
@@ -229,6 +234,10 @@ function eventToScriptable(_event){
 	return {y:_event.y, x: _event.x, type: _event.type, _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
 }
 
+function cutNumber(num){
+	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 ? num3.toFixed(1) : num3) + 'B' : ((num2 = (num/1000000))%1 ? num2.toFixed(1) : num2) + 'M') : ((num2 = (num/1000))%1 ? num2.toFixed(1) : num2) + 'K') : num;
+}
+
 var DiskData = [false];
 Saver.addSavesScope("RSDiskData",
 	function read(scope){
@@ -290,31 +299,34 @@ const Disk = {
 		return extra;
 	},
 	items: {},
-	register: function (name, texture, storage) {
+	register: function (name, texture, storage, registerItem) {
 		for (var i in this.items) {
 			if (this.items[i].storage == storage) {
 				log('Disk with such storage already exists');
 				return  -1;
 			}
 		}
-		IDRegistry.genItemID("storageDisk" + storage);
-		Item.createItem("storageDisk" + storage, name, {
-			name: texture,
-		}, {
-			//isTech: true,
-			stack: 1
-		});
-		mod_tip(ItemID["storageDisk" + storage]);
-		Item.registerNameOverrideFunction(ItemID["storageDisk" + storage], function (item, name) {
+		var itemIDName = registerItem ? registerItem : "storageDisk" + storage;
+		if(registerItem == undefined){
+			IDRegistry.genItemID(itemIDName);
+			Item.createItem(itemIDName, name, {
+				name: texture,
+			}, {
+				//isTech: true,
+				stack: 1
+			});
+			mod_tip(ItemID[itemIDName]);
+		}
+		Item.registerNameOverrideFunction(ItemID[itemIDName], function (item, name) {
 			var disk_data = DiskData[item.data];
 			if(!disk_data) return name + "\n§7" + Translation.translate('Stored') + (storage != Infinity ? ': 0/' + storage : ': 0');
 			name += "\n§7" + Translation.translate('Stored') + ': ' + disk_data.items_stored + (disk_data.storage != Infinity ? '/' + disk_data.storage : '');
 			return name;
 		});
-		this.items[ItemID["storageDisk" + storage]] = { name: name, texture: texture, storage: storage };
-		return ItemID["storageDisk" + storage];
+		this.items[ItemID[itemIDName]] = { name: name, texture: texture, storage: storage };
+		return ItemID[itemIDName];
 	},
-	update: function (extra) {
+	update: function (item) {
 		var diskData = this.getDiskData(item);
 		var items_stored = 0;
 		for (var i in diskData.items) {
@@ -330,6 +342,46 @@ const Disk = {
 	}
 }
 
+const UpgradeRegistry = {
+	upgrades: {},
+	/**
+	 * Register new upgrade
+	 * @param {string} name name of upgrade, used as item name, used if registerItem is not defined
+	 * @param {string} nameID string id of the item
+	 * @param {string} texture texture name, used if registerItem is not defined
+	 * @param {object} params upgrade params
+	 * @param {number=} params.maxStack maximum amount of this upgrades in mechanism, if not defined then amount is infinity
+	 * @param {function(TileEntity, {id: number, count: number, data: number, extra: object}, ItemContainer, string, number)} params.addFunc Called on upgrade added to slot
+	 * @param {function(TileEntity, {id: number, count: number, data: number, extra: object}, ItemContainer, string, number)} params.deleteFunc Called on upgrade deleted from slot 
+	 * @param {string} registerItem if this parameter is defined then item not created, use it if you want to create your item
+	 * @returns {number} return item id
+	 */
+	register: function(name, nameID, texture, params, registerItem){
+		var itemIDName = registerItem ? registerItem : nameID;
+		if(!registerItem){
+			IDRegistry.genItemID(itemIDName);
+			Item.createItem(itemIDName, name, {
+				name: texture,
+			}, {
+				//isTech: true,
+				stack: 64
+			});
+			mod_tip(ItemID[itemIDName]);
+		}
+		params.nameID = itemIDName;
+		this.upgrades[ItemID[itemIDName]] = params;
+		return ItemID[itemIDName];
+	},
+	/**
+	 * Get item string id
+	 * @param {number} id item id
+	 * @returns {string|undefined} return item string id or undefined if upgrade with this id is not registered
+	 */
+	getNameID: function(id){
+		if(this.upgrades[id]) return this.upgrades[id].nameID;
+	}
+}
+
 var itemsNamesMap = {};
 
 const getItemName = function(id, data){
@@ -338,6 +390,8 @@ const getItemName = function(id, data){
 }
 
 var RSNetworks = [];
+
+var RSbannedItems = [0];
 
 const RS_blocks = [];
 Callback.addCallback('PostLoaded', function(){
@@ -399,6 +453,8 @@ const RefinedStorage = {
 			BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
 			if(this.post_unload)this.pre_unload();
 		}
+		if(!params.defaultValues.upgrades)params.defaultValues.upgrades = {};
+		if(!params.upgradesSlots)params.upgradesSlots = [];
 		if(!params.init){
 			params.init = function () {
 				//alert(cts(this) + ' : init');
@@ -412,7 +468,8 @@ const RefinedStorage = {
 					if (controller) {
 						var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
 						if (tile) {
-							tile.updateControllerNetwork();
+							tile.data.updateControllerNetwork = true;
+							//tile.updateControllerNetwork();
 							//if (this.post_created) this.post_created();
 						}
 					}
@@ -430,14 +487,38 @@ const RefinedStorage = {
 							tile.onWindowOpen(container, client);
 						}
 					}
-				})
+				});
 				this.container.addServerCloseListener({
 					onClose: function(container, client){
 						if(tile.onWindowClose){
 							tile.onWindowClose(container, client);
 						}
 					}
-				})
+				});
+				if(this.upgradesSlots)for(var i in this.upgradesSlots){
+					this.container.setSlotAddTransferPolicy(this.upgradesSlots[i], {
+						transfer: function(itemContainer, slot, id, count, data, extra, player){
+							count = 1;
+							if(!(upgrade = UpgradeRegistry.upgrades[id]) || itemContainer.getSlot(slot).id != 0) return 0
+							if(tile.data.upgrades[upgrade.nameID]){
+								if(upgrade.maxStack && tile.data.upgrades[upgrade.nameID] >= upgrade.maxStack) return 0;
+								tile.data.upgrades[upgrade.nameID]++;
+							} else {
+								tile.data.upgrades[upgrade.nameID] = 1;
+							}
+							if(upgrade.addFunc)upgrade.addFunc(tile, {id: id, count: count, data: data, extra: extra}, itemContainer, slot, player);
+							return count;
+						}
+					})
+					this.container.setSlotGetTransferPolicy(this.upgradesSlots[i], {
+						transfer: function(itemContainer, slot, id, count, data, extra, player){
+							if(!(upgrade = UpgradeRegistry.upgrades[id])) return 0
+							if(tile.data.upgrades[upgrade.nameID])tile.data.upgrades[upgrade.nameID]--
+							if(upgrade.deleteFunc)upgrade.deleteFunc(tile, {id: id, count: count, data: data, extra: extra}, itemContainer, slot, player);
+							return count;
+						}
+					})
+				}
 				if(this.post_init)this.post_init();
 				this.data.createdCalled = false;
 				this.networkData.sendChanges();
