@@ -41,10 +41,12 @@ var gridData = {
 	lastPage: -1,
 	textSearch: false,
 	lowPriority: false,
+	slotsKeys: [],
 	updateGui: function(){}
 }
 
 function gridSwitchPage(page, container, ignore, dontMoveSlider){
+	if(Config.dev)Logger.Log('Switch grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container, 'RefinedStorageDebug');
 	var slots = container.slots;
 	var slotsKeys = gridData.slotsKeys;
 	var slots_count = gridData.slots_count;
@@ -60,18 +62,26 @@ function gridSwitchPage(page, container, ignore, dontMoveSlider){
 	if (!gridData.isWorkAllowed) {
 		for (var i = 0; i < slots_count; i++) {
 			container.setSlot("slot" + i, 0, 0, 0, null);
+			container.setText("slot" + i, "0");
 		}
 		return false;
 	}
+	var elements_ = container.getUiAdapter().getWindow().getWindow('main').getElements();
 	for (var i = page * x_count; i < page * x_count + slots_count; i++) {
 		var a = i - (page * x_count);
 		var item = slots[slotsKeys[i]] || { id: 0, data: 0, count: 0, extra: null };
+		//container.markSlotDirty("slot" + a);
+		container.markSlotDirty("slot" + a);
+		elements_.get("slot" + a).setBinding('text', cutNumber(item.count) + "");
+		//container.setText("slot" + a, cutNumber(item.count));
 		container.setSlot("slot" + a, item.id, item.count, item.data, item.extra || null);
 	}
 	return true;
 }
+var _gridSwitchPage__ = gridSwitchPage;
 
-function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
+function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _window, __gridSwitchPage) {
+	var gridSwitchPage = __gridSwitchPage || _gridSwitchPage__;
 	var gridData = grid_Data || {
 		maxY: 0,
 		lastPage: -1,
@@ -98,6 +108,78 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 			}
 		}
 	};
+	var headerWindow = _window.getWindow('header');
+	var headerElements = headerWindow.getContent().elements;
+	headerElements['itemInfoFrame'] = {
+        type: "frame",
+        x: 100,
+        y: 15,
+        width: 300,
+        height: 50,
+        bitmap: "itemInfoFrame",
+        scale: 2
+	}
+	headerElements['itemInfoSlot'] = {
+        type: "slot",
+        x: headerElements['itemInfoFrame'].x + 5,
+		y: headerElements['itemInfoFrame'].y + 5,
+		z: 100,
+		size: 40,
+		bitmap: "_default_slot_empty",
+		isTransparentBackground: true,
+		visual: true
+	}
+	headerElements['itemInfoName'] = {
+		type: "text",
+		x: headerElements['itemInfoSlot'].x + headerElements['itemInfoSlot'].size + 3,
+		y: headerElements['itemInfoSlot'].y + 1,
+		z: 100,
+		text: "",
+		font: {
+			color: android.graphics.Color.WHITE,
+			shadow: 0,
+			size: 11
+		}
+	}
+	headerElements['itemInfoDescription'] = {
+		type: "text",
+		x: headerElements['itemInfoSlot'].x + headerElements['itemInfoSlot'].size + 3,
+		y: headerElements['itemInfoName'].y + Math.round(headerElements['itemInfoName'].font.size*1.1) + 2,
+		z: 100,
+		text: "",
+		multiline: true,
+		font: {
+			color: android.graphics.Color.GRAY,
+			shadow: 0,
+			size: 9
+		}
+	}
+	var headerNameWidth;
+	(function(){
+		headerWindow.forceRefresh();
+		var elementIns = headerWindow.getElements().get('itemInfoName');
+		var clazz = elementIns.getClass();
+		var field = clazz.getDeclaredField("textBounds");
+		field.setAccessible(true);
+		headerNameWidth = function(){
+			return field.get(elementIns).width();
+		}
+	})();
+	function setItemInfoSlot(_item, container){
+		gridData.selectedItemInfoSlot = _item;
+		var item = container.getSlot(_item);
+		container.setSlot('itemInfoSlot', item.id, 1, item.data, item.extra);
+		var fullName = Item.getName(item.id, item.data).replace(/§./g, '');
+		var splitedName = fullName.split('\n');
+		container.setText('itemInfoName', (splitedName[0].length > 40 ? splitedName[0].substr(0, 40) + '...' : splitedName[0]) + ' (' + numberWithCommas(item.count) + ')');
+		container.setText('itemInfoDescription', splitedName.slice(1).join('\n'));
+		// var nameWidth = headerNameWidth();
+		// alert(headerElements['itemInfoName'].x + " + " + nameWidth + " + " + 5 + " = " + (headerElements['itemInfoName'].x + nameWidth + 5));
+		// headerElements['itemInfoFrame'].width = 50 + nameWidth + 5;
+		// headerWindow.forceRefresh();
+		// headerWindow.getElements().get('itemInfoFrame').descriptionWatcher.refresh();
+	}
+	gridData.setItemInfoSlot = setItemInfoSlot;
 	elementsGUI_grid.clickFrameTouchEvents.push(function (element, event) {
 		var content = {elements:elementsGUI_grid};/* element.window.getContent(); *///getContainer().getGuiContent();
 		var itemContainerUiHandler = element.window.getContainer();
@@ -108,11 +190,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 			var distance = Math.abs(event.y - swipe_y);
 			function moveSwitchPage_(_n){
 				_n = (_n ? 1 : -1);
-				gridSwitchPage(gridData.lastPage + _n, itemContainer)
-				/* if(!gridSwitchPage(gridData.lastPage + _n, itemContainer)) return;
-				var pages = gridFuncs.getPages(gridData.slotsKeys.length);
-				var ___y = gridFuncs.getCoordsFromPage(gridData.lastPage + _n, pages);
-				itemContainerUiHandler.getElement("slider_button").setPosition(elementsGUI_grid['slider_button'].x, ___y); */
+				gridSwitchPage(gridData.lastPage + _n, itemContainer);
 			}
 			if (distance > 7) {
 				if (event.y > swipe_y) moveSwitchPage_(false);
@@ -142,13 +220,11 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 			var pages = gridFuncs.getPages(gridData.slotsKeys.length);
 			var page = gridFuncs.getPageFromCoords(event, pages);
 			gridSwitchPage(page, itemContainer);
-			/* var ___y = gridFuncs.getCoordsFromPage(page, pages);
-			itemContainerUiHandler.getElement("slider_button").setPosition(elementsGUI_grid['slider_button'].x, ___y); */
 		}
 	})
 
-	var x_count = Math.ceil((900 - x) / cons);
-	var y_count = limit || Math.ceil((UI.getScreenHeight()- 60 - y - cons) / cons);
+	var x_count = Math.round((910 - x) / cons);
+	var y_count = limit || Math.round((UI.getScreenHeight()- 60 - y - cons) / cons);
 
 	elementsGUI_grid["search_frame"] = {
 		type: "frame",
@@ -173,7 +249,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 										if (!itemContainerUiHandler.getWindow().isOpened()) return;
 										var keyword = editText.getText() + "";
 										gridData.textSearch = keyword.length ? keyword : false;
-										gridData.updateGui(true, true);
+										gridData.updateGui(true, true, gridData.isCrafting);
 									}
 								}).show();
 							//UI.getContext().getActionBar().hide();
@@ -191,7 +267,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 		x: x + 10,
 		y: 30 + 1,
 		z: 100,
-		text: Translation.translate('Search')/*'Search'*/,
+		text: Translation.translate('Search'),
 		font: {
 			color: android.graphics.Color.WHITE,
 			shadow: 0.5,
@@ -210,6 +286,15 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 				num: asd,
 				x: _x,
 				y: _y,
+				visual: true,
+				onTouchEvent: function(element, event){
+					var itemContainerUiHandler = element.window.getContainer();
+					var itemContainer = itemContainerUiHandler.getParent();
+					var _num = this.num + (gridData.lastPage - 1) * x_count;
+					var slot = gridData.slotsKeys[_num];
+					if(!slot)return;
+					setItemInfoSlot(slot, itemContainer);
+				},
 				clicker: {
 					onClick: function (itemContainerUiHandler, itemContainer, element) {
 						var itemContainer = itemContainer.slots ? itemContainer : element;
@@ -221,31 +306,34 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						var _count = 1;
 						var updateFull = false;
 						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + '(' + _num + ') ; lastPage: ' + gridData.lastPage + ' ; count: ' + _count + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
+						var elements_ = itemContainer.getUiAdapter().getWindow().getWindow('main').getElements();
 						if(slotItem.count == _count) {
 							itemContainer.setSlot(slot, 0, 0, 0);
 							gridData.slotsKeys.splice(_num, 1);
-							//gridData.slotsKeys.push(slot);
 							updateFull = true;
 							gridData.updateGui(true, true);
 						} else {
 							if(gridData.sort == 0){
-								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
-									//for(var decNum = -1; itemContainer.slots[gridData.slotsKeys[_num + decNum]] && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
-									//decNum++;
+								if(_num > 0 && slotItem.count - _count <= itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
-									//gridData.slotsKeys.splice(_num, 1);
-									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
 									updateFull = true;
 									gridData.updateGui(true, true);
 								} else {
+									itemContainer.markSlotDirty('slot' + this.num);
+									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
 									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								}
 							} else {
+								itemContainer.markSlotDirty('slot' + this.num);
+								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
 								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 							}
 						}
+						setItemInfoSlot(slot, itemContainer);
 						var map = (asdgfasdasddsad = gridData.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
 						if(map.indexOf(slot) == -1){
 							map.push(slot);
@@ -268,31 +356,34 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 						var _count = this_item && this_item.count < maxStack && this_item.extra == slotItem.extra ? Math.min(slotItem.count, maxStack - this_item.count) : Math.min(slotItem.count, maxStack);
 						var updateFull = false;
 						if(Config.dev)Logger.Log('Deleting slot: ' + slot + ' ; num: ' + this.num + '(' + _num + ') ; lastPage: ' + gridData.lastPage + ' ; count: ' + _count + ' ; x_count: ' + x_count, 'RefinedStorageDebug');
+						var elements_ = itemContainer.getUiAdapter().getWindow().getWindow('main').getElements();
 						if(slotItem.count <= _count) {
 							itemContainer.setSlot(slot, 0, 0, 0);
 							gridData.slotsKeys.splice(_num, 1);
-							//gridData.slotsKeys.push(slot);
 							updateFull = true;
 							gridData.updateGui(true, true);
 						} else {
 							if(gridData.sort == 0){
-								if(_num > 0 && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
-									//for(var decNum = -1; itemContainer.slots[gridData.slotsKeys[_num + decNum]] && slotItem.count - _count < itemContainer.slots[gridData.slotsKeys[_num + decNum]].count && this.num + decNum >= 0; decNum--){};
-									//decNum++;
+								if(_num > 0 && slotItem.count - _count <= itemContainer.slots[gridData.slotsKeys[_num - 1]].count){
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
-									//gridData.slotsKeys.splice(_num, 1);
-									//gridData.slotsKeys.splice(_num + decNum, 0, slot);
 									updateFull = true;
 									gridData.updateGui(true, true);
 								} else {
+									itemContainer.markSlotDirty('slot' + this.num);
+									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
 									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+									//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								}
 							} else {
+								itemContainer.markSlotDirty('slot' + this.num);
+								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
 								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
+								//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 							}
 						}
+						setItemInfoSlot(slot, itemContainer);
 						var map = (asdgfasdasddsad = gridData.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
 						if(map.indexOf(slot) == -1){
 							map.push(slot);
@@ -329,9 +420,9 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 	var slider_frame_border = 7;
 	elementsGUI_grid["slider_frame"] = {
 		type: "frame",
-		x: _x + slider_frame_cons,
+		x: 0,//_x + slider_frame_cons,
 		y: y,
-		width: (1000 - (_x + slider_frame_cons) - slider_frame_cons),
+		width: 50,//(1000 - (_x + slider_frame_cons) - slider_frame_cons),
 		height: y_count * cons,
 		bitmap: "slider",
 		scale: 1,
@@ -348,7 +439,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 			}
 		}
 	}
-
+	elementsGUI_grid["slider_frame"].x = _x + (1000 - _x - elementsGUI_grid["slider_frame"].width) / 2;
 	elementsGUI_grid["slider_button"] = {
 		type: "button",
 		x: elementsGUI_grid["slider_frame"].x + slider_frame_border,
@@ -363,7 +454,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 		y: 0,
 		bitmap: 'but_up',
 		bitmap2: 'but_upPressed',
-		scale: Math.min((1000 - _x - slider_frame_cons * 2) / 25, (y - 30 - 10) / 15),
+		scale: elementsGUI_grid["slider_frame"].width/25,//Math.min((1000 - _x - slider_frame_cons * 2) / 25, (y - 30 - 10) / 15),
 		clicker: {
 			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				gridSwitchPage(gridData.lastPage - 1, itemContainer);
@@ -485,7 +576,6 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data) {
 	gridData.maxY = max_y;
 };
 var _elementsGUI_grid = {};
-grid_set_elements(360, 70, 50, 0, _elementsGUI_grid, gridData);
 
 var gridGUI = new UI.StandartWindow({
 	standart: {
@@ -508,8 +598,13 @@ var gridGUI = new UI.StandartWindow({
 	elements: _elementsGUI_grid
 });
 GUIs.push(gridGUI);
+
+var gridConsPercents = 50/(575.5 - 60);
+grid_set_elements(315, 70, gridConsPercents*(UI.getScreenHeight() - 60), 0, _elementsGUI_grid, gridData, gridGUI);
+gridGUI.getWindow('main').forceRefresh();
+
 testButtons(gridGUI.getWindow('header').getContent().elements, function(){
-	grid_set_elements(360, 70, 50, 0, _elementsGUI_grid, gridData);
+	grid_set_elements(315, 70, gridConsPercents*(UI.getScreenHeight() - 60), 0, _elementsGUI_grid, gridData);
 });
 
 var inv_elements = gridGUI.getWindow('inventory').getContent();
@@ -527,7 +622,7 @@ inv_elements.elements["_CLICKFRAME_"] = {
 			if (!gridData.isWorkAllowed) return;
 			var itemContainerUiHandler = element.window.getContainer();
 			var itemContainer = itemContainerUiHandler.getParent();
-			var slot_id = Math.floor(event.x/251)+Math.floor(event.y/251)*4;
+			var slot_id = Math.floor(event.x/251)+Math.floor(event.y/250)*4;
 			var updateFull = false;
 			var item = Player.getInventorySlot(slot_id);
 			if(item.id == 0)return;
@@ -547,6 +642,7 @@ inv_elements.elements["_CLICKFRAME_"] = {
 					if(Config.dev)Logger.Log('Founded slot: ' + _slotName + ' : ' + JSON.stringify(_slot.asScriptable()), 'RefinedStorageDebug');
 					slotFounded = true;
 					itemContainer.setSlot(_slotName, item.id, _slot.count + count, item.data, item.extra || null);
+					gridData.setItemInfoSlot(_slotName, itemContainer);
 					if(gridData.sort == 0) updateFull = true;
 					gridData.updateGui(true, updateFull);
 					gridData.lowPriority = true;
@@ -558,6 +654,7 @@ inv_elements.elements["_CLICKFRAME_"] = {
 				if(Config.dev)Logger.Log('Slot not founded, new slot name: ' + _slotName, 'RefinedStorageDebug');
 				gridData.slotsKeys.push(_slotName);
 				itemContainer.setSlot(_slotName, item.id, count, item.data, item.extra || null);
+				gridData.setItemInfoSlot(_slotName, itemContainer);
 				updateFull = true;
 				gridData.updateGui(true, updateFull);
 				gridData.lowPriority = true;
@@ -689,6 +786,9 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		textSearch: false,
 		privateRemaked: false,
 		pushDeleteEvents: {},
+		firstOpen: false,
+		firstOpenClients: [],
+		fullRefreshPage: false
 	},
 	useNetworkItemContainer: true,
 	setActiveNotUpdateGui: true,
@@ -698,7 +798,13 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		if (!client || this.container.getNetworkEntity().getClients().contains(client)) return true;
 		this.items();
 		this.container.openFor(client, "main");
-		this.refreshGui(true, client); 
+		/* this.data.firstOpen = World.getThreadTime() + 40;
+		this.data.firstOpenClients.push(client); */
+		/* var ths = this;
+		setTimeout(function(){
+			ths.refreshGui(true, client);
+		},40); */
+		this.refreshGui(true, client);
 		return true;
 	},
 	onWindowClose: function(){
@@ -713,15 +819,32 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
 		if(RSNetworks[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id}) == -1) RSNetworks[this.data.NETWORK_ID].info.openedGrids.push({x: this.x, y: this.y, z: this.z});
 	},
+	pre_init: function(){
+		this.container.setGlobalGetTransferPolicy({
+			transfer: function(itemContainer, slot, id, count, data, extra, player){
+				return 0;
+			}
+		})
+	},
 	post_init: function(){
+		/* this.data.firstOpen = false;
+		this.data.firstOpenClients = []; */
 		this.data.pushDeleteEvents = {};
 	},
 	tick: function () {
+		/* if(this.data.firstOpen && this.data.firstOpen == World.getThreadTime()){
+			for(var i in this.data.firstOpenClients){
+				this.refreshGui(true, this.data.firstOpenClients[i]);
+			}
+			this.data.firstOpenClients = [];
+			this.data.firstOpen = false;
+		} */
 		if (this.container.getNetworkEntity().getClients().iterator().hasNext()) {
 			if(this.data.refreshCurPage){
 				this.items();
-				this.refreshGui();
+				this.refreshGui(false, false, this.data.fullRefreshPage);
 				this.data.refreshCurPage = false;
+				this.data.fullRefreshPage = false;
 			}
 		}
 		for(var p in this.data.pushDeleteEvents){
@@ -738,7 +861,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					var item = player.getInventorySlot(event.slot);
 					if(item.id == 0) return;
 					var count = Math.min(event.count, item.count);
-					var pushed = this.pushItem(item, count);
+					var pushed = this.pushItem(item, count, true);
 					if(pushed < count){
 						player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
 					}
@@ -941,16 +1064,16 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		},
 		containerEvents: {
 			openGui: function(container, window, content, eventData){
+				if(!content || !window || !window.isOpened()) return;
 				Object.assign(gridData, eventData);
 				gridData.updateGui = function(refresh, updateFilters, nonlocal){
-					if(!content || (window && !window.isOpened())) return;
 					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: ' + JSON.stringify(eventData), 'RefinedStorageDebug');
 					delete container.slots.bindings;
 					delete container.slots.slots;
 					gridData.networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
 					if(updateFilters){
 						var _slotKeys = [];
-						for(var i in container.slots)if(i[0] != 's')_slotKeys.push(i);
+						for(var i in container.slots)if(i[0] >= 0 && container.slots[i].id != 0)_slotKeys.push(i);
 						gridData.slotsKeys = _slotKeys;//Object.keys(container.slots).splice(0, eventData.slotsLength);
 						//alert(gridData.slotsKeys);
 						//if(Config.dev)Logger.Log('Pre items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
@@ -965,6 +1088,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 							})
 						};
 						gridData.slotsKeys.sort(gridFuncs.sort(eventData.sort, eventData.reverse_filter, container.slots));
+						if(gridData.selectedItemInfoSlot)gridData.setItemInfoSlot(gridData.selectedItemInfoSlot, container);
 						//if(Config.dev)Logger.Log('Post items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
 					}
 					content.elements["image_filter"].bitmap = 'RS_filter' + (eventData.sort + 1);
@@ -980,7 +1104,6 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					content.elements["slider_button"].bitmap = gridData.slotsKeys.length <= gridData.slots_count ? 'slider_buttonOff' : 'slider_buttonOn';
 					//if(refresh)window.getWindow('main').getElements().get("slider_button").setPosition(content.elements['slider_button'].x, gridFuncs.getCoordsFromPage(gridData.lastPage, gridFuncs.getPages(gridData.slotsKeys.length)));
 					if (!eventData.isWorkAllowed) {
-						//alert('Hey, slots is darken: ' + eventData.NETWORK_ID + ' ; ' + eventData.isActive);
 						for (var i = 0; i < slots_count; i++) {
 							content.elements['slot' + i].bitmap = 'classic_darken_slot';
 						}

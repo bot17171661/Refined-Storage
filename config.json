@@ -16,7 +16,12 @@
 		"cable":0,
 		"interface":3,
 		"upgrades":{
-		  "speed":2
+		  "speed":2,
+		  "stack":12,
+		  "silkTouch":15,
+		  "range":8,
+		  "fortune":10,
+		  "crafting":5
 		}
 	}
 }

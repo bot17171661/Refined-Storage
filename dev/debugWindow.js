@@ -71,7 +71,7 @@ if(Config.dev)(function(){
             var t = Debug.sysTime();
             if (frame++ % 20 == 0) {
                 if (lasttime != -1) {
-                    tps = 1000 / (t - lasttime) * 20
+                    tps = Math.round(1000 / (t - lasttime) * 20);
                     //Game.tipMessage(Math.round(tps * 10) / 10 + "tps");
                     if(lasttps != (lasttps = tps))Network.sendToAllClients("RefinedStoragePE.debugTPSmeter", {
                         tps: tps
@@ -105,7 +105,7 @@ if(Config.dev)(function(){
             var t = Debug.sysTime();
             if (frame1++ % 20 == 0) {
                 if (lasttime1 != -1) {
-                    tps = 1000 / (t - lasttime1) * 20
+                    tps = Math.round(1000 / (t - lasttime1) * 20);
                     //Game.tipMessage(Math.round(tps * 10) / 10 + "tps")
                     MainGUIElements['localtps'].text = 'Client TPS: ' + Math.round(tps * 10) / 10
                 }

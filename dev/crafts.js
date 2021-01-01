@@ -118,6 +118,23 @@ Callback.addCallback("PreLoaded", function () {
 		"grg",
 		"sgs"
 	], ['q', ItemID.quartz_enriched_iron, -1, 'g', ItemID['16k_storage_part'], -1, 's', ItemID.advanced_processor, -1, 'r', 331, -1]);
+	Recipes.addShaped({id: ItemID['rs_upgrade'], count: 1, data: 0}, [
+		"igi",
+		"isi",
+		"igi"
+	], ['s', ItemID['improved_processor'], 0, 'g', 331, -1, 'i', ItemID['quartz_enriched_iron'], -1]);
+	Recipes.addShaped({id: ItemID['RSSpeedUpgrade'], count: 1, data: 0}, [
+		"igi",
+		"gsg",
+		"iii"
+	], ['s', ItemID['rs_upgrade'], 0, 'g', 353, 0, 'i', ItemID['quartz_enriched_iron'], -1]);
+	Recipes.addShaped({id: ItemID['RSStackUpgrade'], count: 1, data: 0}, [
+		"sgs",
+		"gsg",
+		"sgs"
+	], ['g', ItemID['RSSpeedUpgrade'], 0, 's', 353, 0]);
+
+
 	Recipes.addShaped({id: BlockID['RS_controller'], count: 1, data: 0}, [
 		"sqs",
 		"grg",
@@ -162,5 +179,5 @@ Callback.addCallback("PreLoaded", function () {
 		"iii",
 		"isi",
 		"iii"
-	], ['s', 1, 0, 'r', 331, -1, 'i', ItemID.quartz_enriched_iron, -1]);
+	], ['s', 1, 0, 'i', ItemID.quartz_enriched_iron, -1]);
 });

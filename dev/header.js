@@ -2,7 +2,45 @@ const DISPLAY = UI.getContext().getWindow().getWindowManager().getDefaultDisplay
 const WorkbenchRecipes = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchRecipeRegistry');
 const WorkbenchFieldAPI = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchFieldAPI');
 const zhekaCompiler = WRAP_JAVA('com.zhekasmirnov.innercore.mod.executable.Compiler');
+const ScriptableObjectHelper = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.ScriptableObjectHelper');
 const _setTip = ModAPI.requireGlobal("MCSystem.setLoadingTip");
+var RSJava = WRAP_JAVA('com.bot12381.refined.Main');
+RSJava = new RSJava();
+
+
+Callback.addCallback('PostLoaded', function(){
+	/* var hashSet = new java.util.HashSet();
+	WorkbenchRecipes.addRecipesThatContainItem(5, 0, hashSet);
+	var it = hashSet.iterator();
+	while (it.hasNext()) {
+		var jRecipe = it.next();
+		var result = jRecipe.getResult();
+		alert(Item.getName(result.id, result.data) + ' : ' + result.id + ' : ' + RSJava.isDarkenSlot(jRecipe, {5: [0, 1], 158: [0]}, ['5_0', '158_0']));
+	} */
+	/* var container = new ItemContainer();
+	var items = {};
+	var itemsMap = [];
+	var onlyItemsMap = {};
+	for(var i = 100; i >= 1; i--){
+		var uid = i + '_0';
+		items[uid] = {id: i, data: 0, count: 50, extra: null};
+		itemsMap.push(uid);
+		onlyItemsMap[i] = [0];
+		container.setSlot(uid, i, 10, 0);
+	} */
+	//alert(itemsMap);
+	/* var millis = java.lang.System.currentTimeMillis();
+	var sorted = RSJava.sortCrafts(items, "-1nullfalse", onlyItemsMap);
+	alert('Array sorted on: ' + (java.lang.System.currentTimeMillis() - millis));
+	alert(sorted.length);
+	var array = ScriptableObjectHelper.createArray(sorted); */
+	/* alert(itemsMap);
+	var millis = java.lang.System.currentTimeMillis();
+	RSJava.sortItems(0, false, container, itemsMap);
+	alert('Array sorted on: ' + (java.lang.System.currentTimeMillis() - millis));
+	alert(ScriptableObjectHelper.createArray(itemsMap)); */
+
+})
 
 IMPORT("EnergyNet");
 IMPORT("StorageInterface");
@@ -40,10 +78,10 @@ const runOnUiThread = function(func_, _interval){
 	}));
 }
 
-var EMPTY_SAVER = Saver.registerObjectSaver('THIS_IS_EMPTY_SAVER', {
+/* var EMPTY_SAVER = Saver.registerObjectSaver('THIS_IS_EMPTY_SAVER', {
 	read: function(){return null},
 	save: function(){return null}
-});
+}); */
 
 const searchController = function (_coords, _self) {
 	var outCoords = [];
@@ -218,7 +256,7 @@ function searchBlocksInNetwork(net_id, id){
 }
 
 function getItemUid(item){
-	return item.id + '_' + item.data + (item.extra ? '_' + item.extra.getValue() : '');
+	return item.id + '_' + item.data + (item.extra && item.extra.getValue() != 0 ? '_' + item.extra.getValue() : '');
 }
 
 function parseItemUid(itemUid){
@@ -231,7 +269,7 @@ function parseItemUid(itemUid){
 }
 
 function eventToScriptable(_event){
-	return {y:_event.y, x: _event.x, type: _event.type, _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
+	return {y:_event.y, x: _event.x, type: _event.type + "", _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
 }
 
 function cutNumber(num){
@@ -344,6 +382,7 @@ const Disk = {
 
 const UpgradeRegistry = {
 	upgrades: {},
+	stringIDUpgrades: {},
 	/**
 	 * Register new upgrade
 	 * @param {string} name name of upgrade, used as item name, used if registerItem is not defined
@@ -353,10 +392,11 @@ const UpgradeRegistry = {
 	 * @param {number=} params.maxStack maximum amount of this upgrades in mechanism, if not defined then amount is infinity
 	 * @param {function(TileEntity, {id: number, count: number, data: number, extra: object}, ItemContainer, string, number)} params.addFunc Called on upgrade added to slot
 	 * @param {function(TileEntity, {id: number, count: number, data: number, extra: object}, ItemContainer, string, number)} params.deleteFunc Called on upgrade deleted from slot 
+	 * @param {string} usage energy usage
 	 * @param {string} registerItem if this parameter is defined then item not created, use it if you want to create your item
 	 * @returns {number} return item id
 	 */
-	register: function(name, nameID, texture, params, registerItem){
+	register: function(name, nameID, texture, params, usage, registerItem){
 		var itemIDName = registerItem ? registerItem : nameID;
 		if(!registerItem){
 			IDRegistry.genItemID(itemIDName);
@@ -369,16 +409,38 @@ const UpgradeRegistry = {
 			mod_tip(ItemID[itemIDName]);
 		}
 		params.nameID = itemIDName;
+		params.usage = usage || 0;
 		this.upgrades[ItemID[itemIDName]] = params;
+		this.stringIDUpgrades[itemIDName] = params;
 		return ItemID[itemIDName];
 	},
 	/**
+	 * Get upgrade data
+	 * @param {number|string} id item id or string id(nameID) of upgrade
+	 * @returns {object|undefined} return upgrade data or undefined if upgrade with this id is not registered
+	 */
+	getData: function(id){
+		var upgrade = this.upgrades[id] || this.stringIDUpgrades[id];
+		if(upgrade) return upgrade;
+	},
+	/**
 	 * Get item string id
-	 * @param {number} id item id
+	 * @param {number|string} id item id or string id(nameID) of upgrade
 	 * @returns {string|undefined} return item string id or undefined if upgrade with this id is not registered
 	 */
 	getNameID: function(id){
-		if(this.upgrades[id]) return this.upgrades[id].nameID;
+		var upgrade = this.upgrades[id] || this.stringIDUpgrades[id];
+		if(upgrade) return upgrade.nameID;
+	},
+	/**
+	 * Get upgrade energy usage
+	 * @param {number|string} id item id or string id(nameID) of upgrade
+	 * @returns {object|undefined} return upgrade energy usage or undefined if upgrade with this id is not registered
+	 */
+	getEnergyUsage: function(id){
+		var upgrade = this.upgrades[id] || this.stringIDUpgrades[id];
+		if(upgrade) return upgrade.usage;
+		return 0;
 	}
 }
 
@@ -506,6 +568,8 @@ const RefinedStorage = {
 							} else {
 								tile.data.upgrades[upgrade.nameID] = 1;
 							}
+							//var networkTile = tile.getNetworkTile();
+							//if(networkTile)networkTile.upgrades = tile.data.upgrades;
 							if(upgrade.addFunc)upgrade.addFunc(tile, {id: id, count: count, data: data, extra: extra}, itemContainer, slot, player);
 							return count;
 						}
@@ -514,6 +578,8 @@ const RefinedStorage = {
 						transfer: function(itemContainer, slot, id, count, data, extra, player){
 							if(!(upgrade = UpgradeRegistry.upgrades[id])) return 0
 							if(tile.data.upgrades[upgrade.nameID])tile.data.upgrades[upgrade.nameID]--
+							//var networkTile = tile.getNetworkTile();
+							//if(networkTile)networkTile.upgrades = tile.data.upgrades;
 							if(upgrade.deleteFunc)upgrade.deleteFunc(tile, {id: id, count: count, data: data, extra: extra}, itemContainer, slot, player);
 							return count;
 						}
@@ -539,6 +605,7 @@ const RefinedStorage = {
 					RSNetworks[net_id][cts(this)] = {
 						id: this.blockInfo.id,
 						coords: coords_this,
+						upgrades: this.data.upgrades,
 						isActive: this.data.isActive || false
 					}
 				}
@@ -647,6 +714,11 @@ const RefinedStorage = {
 			if(this.data.redstone_mode == undefined) this.data.redstone_mode = 0;
 			this.data.redstone_mode = this.data.redstone_mode >= 2 ? 0 : this.data.redstone_mode + 1;
 			if(!this.refreshRedstoneMode() && this.refreshGui) this.refreshGui();
+		}
+		if(!params.getNetworkTile){
+			params.getNetworkTile = function () {
+				if(this.data.NETWORK_ID != "f" && RSNetworks[this.data.NETWORK_ID] && (answ = RSNetworks[this.data.NETWORK_ID][this.coords_id()])) return answ;
+			}
 		}
 		this.paramsMap[id] = params;
 		TileEntity.registerPrototype(id, params);
@@ -786,4 +858,4 @@ function testButtons(elementsS_, initFunc_){
 			}
 		}
 	}
-}
+};

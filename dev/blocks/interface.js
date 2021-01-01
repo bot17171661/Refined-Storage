@@ -16,7 +16,7 @@ var elementsGUI_interface = {};
 var interfaceData = {
 	getSelectedSlot: function(){}
 };
-(function(){
+function initInterfaceElements(){
 
 	var slotsSize = 60;
 	var x = 375
@@ -187,7 +187,8 @@ var interfaceData = {
 			size: upgradesSlotsSize + 1
 		}
 	}
-})();
+};
+initInterfaceElements();
 
 var interfaceGUI = new UI.StandartWindow({
 	standart: {
@@ -209,6 +210,8 @@ var interfaceGUI = new UI.StandartWindow({
 	elements: elementsGUI_interface
 });
 GUIs.push(interfaceGUI);
+
+testButtons(interfaceGUI.getWindow('header').getContent().elements, initInterfaceElements);
 
 importSlotsMap = {};
 for(var asdl = 0; asdl < 9; asdl++){
@@ -240,6 +243,18 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		return true;
 	},
 	tick: function(){
+		for(var k in this.data.importItems){
+			var importItem = this.data.importItems[k];
+			if(importItem.id == 0) continue;
+			var slotItem = this.container.getSlot('slot_output' + k);
+			var item = {id: importItem.id, count: importItem.count - slotItem.count, data: this.data.useDamage ? importItem.data : -1, extra: this.data.useNbt ? importItem.extra : -1};
+			if(item.count <= 0 || (slotItem.id != importItem.id && slotItem.id != 0) || (slotItem.data != importItem.data && this.data.useDamage) || (slotItem.extra != importItem.extra && this.data.useNbt)) continue;
+			var deleted = this.deleteItem(item);
+			if(deleted < item.count){
+				var count = item.count - deleted;
+				this.container.setSlot('slot_output' + k, item.id, slotItem.count + count, item.data, item.extra);
+			}
+		}
 		this.data.ticks++
 		if(this.data.ticks%this.data.speed == 0){
 			var slot = this.container.getSlot('slot_input' + this.data.currentSlot);
@@ -261,11 +276,11 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 				}
 				if(slot.count <= (count - pushed)) this.container.clearSlot('slot_input' + this.data.currentSlot);
 				this.pushItem(slot, count);
-				this.container.sendChanges();
 			}
 		}
+		this.container.sendChanges();
 	},
-	post_update_network: function(net_id){
+	/* post_update_network: function(net_id){
 		if(net_id == 'f') return;
 		var ths = this;
 		RSNetworks[net_id][this.coords_id()].pushItemFunc = function(item, count){
@@ -287,7 +302,7 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 			}
 		}
 		return count;
-	},
+	}, */
 	itemCanBePushed: function(item, count, _inverted){
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return _inverted ? count : 0;

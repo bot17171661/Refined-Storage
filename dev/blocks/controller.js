@@ -545,6 +545,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			_data[cts(this)] = {
 				id: BlockID.RS_controller,
 				coords: { x: this.x, y: this.y, z: this.z },
+				upgrades: {},
 				isActive: false
 			}
 			_data['info'] = {
@@ -558,10 +559,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				openedGrids: [],
 				storage: 0,
 				stored: 0,
-				refreshOpenedGrids: function(){
+				refreshOpenedGrids: function(_full){
 					for(var i in this.openedGrids){
 						var __coords = this.openedGrids[i];
 						var tile = World.getTileEntity(__coords.x, __coords.y, __coords.z, controllerTile.blockSource);
+						tile.data.fullRefreshPage = _full;
 						tile.data.refreshCurPage = true;
 					}
 				},
@@ -768,7 +770,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					for(var i in this.disk_map){
 						for(var k in this.disk_map[i]){
 							if(count == 0 || this.storage - this.stored == 0) {
-								if(!nonUpdate)this.refreshOpenedGrids();
+								if(!nonUpdate)this.refreshOpenedGrids(true);
 								return count;
 							}
 							if(!this.disk_map[i][k]) continue;
@@ -795,7 +797,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									name: item.name */
 								}
 								this.disk_map[i][k].items_stored += count;
-								if(!nonUpdate)this.refreshOpenedGrids();
+								if(!nonUpdate)this.refreshOpenedGrids(true);
 								return 0;
 							}
 						}
@@ -815,20 +817,23 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				},
 				deleteItem: function(item, count, nonUpdate){
 					count = count || item.count;
-					if(this.stored == 0) return count;
+					if(this.stored == 0 || !this.just_items_map[item.id]) return count;
+					if((!item.data && item.data != 0) || item.data == -1) item.data = this.just_items_map[item.id][0];
+					if(item.extra === undefined)item.extra = null;
+					if((!item.extra && item.extra != null) || item.extra == -1) item.extra = this.just_items_map_extra[item.id+'_'+item.data][0] || null;
 					var itemUid = getItemUid(item);
-					var count1 = Math.min(count, this.stored);
 					if(Config.dev)Logger.Log('Deleting item:  id: ' + item.id + ', count: ' + count + ' (' + item.count + '), data: ' + item.data + (item.extra ? ', extra: ' + item.extra.getValue() : '') + ', uid: ' + itemUid + ', storage: ' + this.storage + ', stored: ' + this.stored + ' (' + (this.stored - count) + ')' + ', freespace: ' + (this.storage - this.stored) + ' (' + ((this.storage - this.stored) + count) + ')', 'RefinedStorageDebug');
 					for(var i in _data){
 						if(_data[i].deleteItemFunc)count = _data[i].deleteItemFunc(item, count) || count;
 						if(count <= 0) return 0;
 					}
 					if((num = this.items_map.indexOf(itemUid)) != -1){
+						var count1 = Math.min(count, this.stored, this.items[num].count);
 						if(count >= this.items[num].count){
 							this.items_map.splice(num, 1);
 							this.items.splice(num, 1);
-							if(this.just_items_map[item.id] && (justIMap = this.just_items_map[item.id].indexOf(item.data)) != -1)this.just_items_map[item.id].splice(justIMap, 1);
-							if(this.just_items_map[item.id] && this.just_items_map[item.id].length == 0)delete this.just_items_map[item.id];
+							if((justIMap = this.just_items_map[item.id].indexOf(item.data)) != -1)this.just_items_map[item.id].splice(justIMap, 1);
+							if(this.just_items_map[item.id].length == 0)delete this.just_items_map[item.id];
 							if(item.extra){
 								itemUidExtra = item.id+'_'+item.data;
 								if(this.just_items_map_extra[itemUidExtra] && (justIMap = this.just_items_map_extra[itemUidExtra].indexOf(item.extra) != -1)) this.just_items_map_extra[itemUidExtra].splice(justIMap, 1);
@@ -841,8 +846,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 										this.stored -= disk_item.count;
 										this.disk_map[i][k].items_stored -= disk_item.count;
 										delete this.disk_map[i][k].items[itemUid];
-										if(!nonUpdate)this.refreshOpenedGrids();
-										return 0;
+										if(!nonUpdate)this.refreshOpenedGrids(true);
+										return count - count1;
 									}
 								}
 							}
@@ -961,19 +966,23 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		var net_map = {};
 		for (var i in RSNetworks[this.data.NETWORK_ID]) {
 			if (!RSNetworks[this.data.NETWORK_ID][i] || i == "info" || RSNetworks[this.data.NETWORK_ID][i].id == BlockID.RS_controller || !RSNetworks[this.data.NETWORK_ID][i].isActive) continue;
-			var id_ = RSNetworks[this.data.NETWORK_ID][i].id;
+			var networkTile = RSNetworks[this.data.NETWORK_ID][i];
+			var id_ = networkTile.id;
 			if(!net_map[String(id_)])
 				net_map[String(id_)] = {id: id_, energy_use: 0, count: 1};
 			else
 				net_map[String(id_)].count++;
 			if (id_ == BlockID.diskDrive) {
-				var tile = World.getTileEntity(RSNetworks[this.data.NETWORK_ID][i].coords.x, RSNetworks[this.data.NETWORK_ID][i].coords.y, RSNetworks[this.data.NETWORK_ID][i].coords.z, this.blockSource);
+				var tile = World.getTileEntity(networkTile.coords.x, networkTile.coords.y, networkTile.coords.z, this.blockSource);
 				if (!tile) continue;
-				usage += EnergyUse['disk']*tile.data.disks;
-				net_map[String(id_)].energy_use += EnergyUse['disk']*tile.data.disks;
+				var __usage = EnergyUse['disk']*tile.data.disks;
+				usage += __usage;
+				net_map[String(id_)].energy_use += __usage;
 			} else {
-				usage += EnergyUse[id_] || 0;
-				net_map[String(id_)].energy_use += EnergyUse[id_] || 0;
+				var __usage = EnergyUse[id_] || 0;
+				for(var j in networkTile.upgrades)__usage += UpgradeRegistry.getEnergyUsage(j)*networkTile.upgrades[j];
+				usage += __usage;
+				net_map[String(id_)].energy_use += __usage;
 			}
 		}
 		this.data.net_map = net_map;

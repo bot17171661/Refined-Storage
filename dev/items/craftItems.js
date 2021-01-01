@@ -125,3 +125,11 @@ Item.createItem("storage_housing", 'Storage Housing', {
 	stack: 64
 });
 mod_tip(ItemID["storage_housing"]);
+
+IDRegistry.genItemID("rs_upgrade");
+Item.createItem("rs_upgrade", 'Upgrade', {
+	name: 'rs_upgrade'
+}, {
+	stack: 64
+});
+mod_tip(ItemID["rs_upgrade"]);
