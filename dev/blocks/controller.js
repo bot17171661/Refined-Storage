@@ -367,43 +367,6 @@ function initControllerElements() {
 		bitmap: "redstone_GUI_0",
 		scale: elementsGUI_controller["redstone_button"].scale*20/16,
 	}
-	//alert(SyncedNetworkData);
-	/* elementsGUI_controller["current_text_mode"] = 0;
-	elementsGUI_controller["testtext"] = {
-		type: "button",
-		x: elementsGUI_controller["redstone_button"].x,
-		y: elementsGUI_controller["redstone_button"].y - (20 * elementsGUI_controller["redstone_button"].scale) - settings_cons,
-		bitmap: 'RS_empty_button',
-		bitmap2: 'RS_empty_button_pressed',
-		scale: mesh_height*0.17/20,
-		clicker: {
-			onClick: function (itemContainerUiHandler, container, element) {
-				alert(container.getNetworkEntity().getTarget());
-				if(elementsGUI_controller["current_text_mode"]++ >= 5)elementsGUI_controller["current_text_mode"] = 0;
-				for(var i = 0; i <= 5; i++){
-					if(i != elementsGUI_controller["current_text_mode"]){
-						elementsGUI_controller["test_text_element" + i] = {text: (elementsGUI_controller["test_text_element" + i] ? elementsGUI_controller["test_text_element" + i].text : '')};
-					} else {
-						elementsGUI_controller["test_text_element" + i] = {
-							type: "text",
-							x: elementsGUI_controller["testtext"].x + (20 * elementsGUI_controller["redstone_button"].scale) + 20,
-							y: elementsGUI_controller["testtext"].y,
-							z: 10,
-							text: (elementsGUI_controller["test_text_element" + i] ? elementsGUI_controller["test_text_element" + i].text : ''),//i + "123",
-							font: {
-								color: android.graphics.Color.DKGRAY,
-								shadow: 0.15,
-								size: 18
-							}
-						}
-					}
-				}
-				element.window.getContentProvider().refreshElements();
-			},
-			onLongClick: function (itemContainerUiHandler, container, element) {
-			}
-		}
-	} */
 	controller_other_data.max_y = max_y;
 };
 initControllerElements();
@@ -437,6 +400,10 @@ var controllerFuncs = {
 		return 'controller_on';
 	},
 	getEnergyScaled: function (scale, energy) {
+		if(!energy && energy != 0){
+			var energy = scale;
+			var scale = 100;
+		}
 		return Math.floor(energy / Config.controller.energyCapacity * scale);
 	},
 	getPages: function(_length){
@@ -489,7 +456,9 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		networkDataUpdate: false,
 		containerUpdate: false,
 		ticks: 0,
-		updateControllerNetwork: false
+		updateControllerNetwork: false,
+		updateModel: false,
+		lastTexture: ''
 	},
 	useNetworkItemContainer: true,
 	created: function () {
@@ -922,7 +891,6 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			isCreative: this.data.isCreative, 
 			net_map: this.data.net_map
 		};
-		//alert(JSON.stringify(_data));
 		this.container.sendEvent(client, "openGui", _data); 
 		this.container.setScale('scale', this.data.energy / this.getCapacity());
 		this.container.setText('usage', Translation.translate('Usage')+": " + this.data.usage + " FE/t");
@@ -995,6 +963,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		this.data.energy += add;
 		this.networkData.putInt('energy', this.data.energy);
 		this.data.networkDataUpdate = true;
+		this.data.updateModel = true;
 		return type == 'Eu' ? add / 4 : add;
 	},
 	pre_setActive: function(state){
@@ -1040,6 +1009,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				this.data.energy -= usage;
 				this.networkData.putInt('energy', this.data.energy);
 				this.data.networkDataUpdate = true;
+				this.data.updateModel = true;
 			}
 		} else {
 			if(this.data.activePost) {
@@ -1054,6 +1024,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(this.data.containerUpdate){
 			this.container.sendChanges();
 			this.data.containerUpdate = false;
+		}
+		if(this.data.updateModel){
+			var texture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(this.data.energy), this.data.isActive);
+			if(this.data.lastTexture != (this.data.lastTexture = texture)) this.refreshModel();
+			this.data.updateModel = false;
 		}
 	},
 	refreshModel: function(){
@@ -1076,8 +1051,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			extra = new ItemExtraData();
 			extra.putInt('energy', this.data.energy);
 		}
-		var energyScaled = controllerFuncs.getEnergyScaled(100, this.data.energy);
 		var block_data = 0;
+		var energyScaled = controllerFuncs.getEnergyScaled(100, this.data.energy);
 		if (energyScaled <= 0) {
 			block_data = 0;
 		} else if (energyScaled <= 20) {
@@ -1095,17 +1070,17 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	client: {
 		load: function(){
-			//alert('Loaded: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			if(Config.dev)Logger.Log('Loaded Controller client tile: energy: ' + this.networkData.getInt('energy') + ' ; isActive: ' + this.networkData.getBoolean('isActive'), 'RefinedStorageDebug');
 			if(this.refreshModel)this.refreshModel();
 		},
 		refreshModel: function(eventData, connectedClient){
-			//alert('Refreshing model: ' + this.networkData.getInt('energy') + ' : ' + this.networkData.getBoolean('isActive'));
+			if(Config.dev)Logger.Log('Local refreshing Controller model: energy: ' + this.networkData.getInt('energy') + ' ; isActive: ' + this.networkData.getBoolean('isActive'), 'RefinedStorageDebug');
 			var newTexture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(100, this.networkData.getInt('energy')), this.networkData.getBoolean('isActive'));
 			RefinedStorage.mapTexture(this, newTexture);
 		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
-				//alert('Event refreshing model: ' + eventData.energy + ' : ' + eventData.isActive);
+				if(Config.dev)Logger.Log('Event refreshing Controller model: energy: ' + eventData.energy + ' ; isActive: ' + eventData.isActive, 'RefinedStorageDebug');
 				var newTexture = controllerFuncs.getNewTexture(controllerFuncs.getEnergyScaled(100, eventData.energy), eventData.isActive);
 				RefinedStorage.mapTexture(eventData.coords, newTexture);
 			}

@@ -429,11 +429,13 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	client: {
 		refreshModel: function(){
 			var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+			if(Config.dev)Logger.Log('Local refreshing DiskDrive model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
 			mapDisks(this, this.networkData.getInt('block_data'), disks_data, this.networkData.getBoolean('isActive'));
 		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
 				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+				if(Config.dev)Logger.Log('Event refreshing DiskDrive model: block_data: ' + eventData.block_data + ' ; isActive: ' + eventData.isActive + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
 				mapDisks(eventData.coords, eventData.block_data, disks_data, eventData.isActive);
 			}
 		},

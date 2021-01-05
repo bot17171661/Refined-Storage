@@ -727,6 +727,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	provideCraft: function(count){
 		if(!this.isWorkAllowed() || !this.data.selectedRecipe || !this.data.selectedRecipe.craftable) return false;
+		if(Config.dev)Logger.Log('Providing craft: result: ' + JSON.stringify(this.data.selectedRecipe.result), 'RefinedStorageDebug');
 		var netFuncs = RSNetworks[this.data.NETWORK_ID].info;
 		var selectedRecipe = this.data.selectedRecipe;
 		var javaRecipe = selectedRecipe.javaRecipe;
@@ -796,10 +797,8 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		}
 		for(var p in this.data.pushDeleteEvents){
 			var player = new PlayerActor(Number(p));
-			//alert('Checking event of: ' + p);
 			for(var i in this.data.pushDeleteEvents[p]){
 				var event = this.data.pushDeleteEvents[p][i];
-				//alert('Event: ' + JSON.stringify(event));
 				if(!event) {
 					delete this.data.pushDeleteEvents[p][i];
 					continue;
@@ -808,18 +807,13 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 					var item = player.getInventorySlot(event.slot);
 					if(item.id == 0) return;
 					var count = Math.min(event.count, item.count);
-					var pushed = this.pushItem(item, count);
+					var pushed = this.pushItem(item, count, true);
 					if(pushed < count){
 						player.setInventorySlot(event.slot, item.id, item.count - (count - pushed), item.data, item.extra);
 					}
 					if((_index = this.originalItemsMap().indexOf(getItemUid(item))) != -1)this.container.markSlotDirty(_index+'slot');
 					this.items();
 					this.refreshGui(false, false, item.count <= count || event.updateFull);
-					/* var iterator = this.container.getNetworkEntity().getClients().iterator();
-					while(iterator.hasNext()){
-						var _client = iterator.next();
-						if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-					} */
 					delete this.data.pushDeleteEvents[p][i];
 				}
 				if(event.type == 'delete'){
@@ -832,11 +826,6 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
 							this.items();
 							this.refreshGui(false, false, item.count <= count || event.updateFull);
-							/* var iterator = this.container.getNetworkEntity().getClients().iterator();
-							while(iterator.hasNext()){
-								var _client = iterator.next();
-								if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-							} */
 						}
 					}
 					delete this.data.pushDeleteEvents[p][i];
@@ -878,7 +867,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	client: {
 		refreshModel: function(){
-			//alert('Local refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive'));
+			if(Config.dev)Logger.Log('Local refreshing CraftingGrid model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive'), 'RefinedStorageDebug');
 			var render = new ICRender.Model();
 			var model = BlockRenderer.createTexturedBlock(getCraftingGridTexture(this.networkData.getInt('block_data'), this.networkData.getBoolean('isActive')));
 			render.addEntry(model);
@@ -921,7 +910,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		},
 		events: {
 			refreshModel: function(eventData, packetExtra) {
-				//alert('Event refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive') + ' : ' + eventData.isActive);
+				if(Config.dev)Logger.Log('Event refreshing CraftingGrid model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; eventIsActive: ' + eventData.isActive, 'RefinedStorageDebug');
 				var render = new ICRender.Model();
 				var model = BlockRenderer.createTexturedBlock(getCraftingGridTexture(eventData.block_data, eventData.isActive));
 				render.addEntry(model);
@@ -937,7 +926,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				craftingGridData.container = container;
 				craftingGridData.updateGui = function(refresh, updateFilters, updateCrafts, nonlocal){
 					if(!content || !window || !window.isOpened()) return;
-					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: ' + JSON.stringify(eventData), 'RefinedStorageDebug');
+					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: refresh:' + refresh + ' updateFilters:' + updateFilters + ' updateCrafts:' + updateCrafts + ' eventdata:' + JSON.stringify(eventData), 'RefinedStorageDebug');
 					delete container.slots.bindings;
 					delete container.slots.slots;
 					craftingGridData.networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
@@ -1023,7 +1012,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 									craftingGridData.darkenSlots = {};
 									craftingGridSwitchCraftsPage(refresh ? craftingGridData.lastCraftsPage : 1, container, true);
 								} catch(err){
-									alert('Error on sorting crafts' + JSON.stringify(err));
+									alert('Error on sorting crafts: ' + JSON.stringify(err));
 								}
 							}
 						});

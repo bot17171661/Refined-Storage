@@ -401,10 +401,12 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 	},
 	client:{
 		refreshModel: function(eventData, packetExtra) {
+			if(Config.dev)Logger.Log('Local refreshing Interface model: isActive: ' + this.networkData.getBoolean('isActive'), 'RefinedStorageDebug');
 			RefinedStorage.mapTexture(this, this.networkData.getBoolean('isActive') ? 'interface_on' : 'interface_off');
 		},
 		events: {
 			refreshModel: function(eventData, packetExtra) {
+				if(Config.dev)Logger.Log('Event refreshing Interface model: isActive: ' + eventData.isActive, 'RefinedStorageDebug');
 				RefinedStorage.mapTexture(this, eventData.isActive ? 'interface_on' : 'interface_off');
 			}
 		},
@@ -413,13 +415,13 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				content.elements["image_damage"].bitmap = eventData.useDamage ? 'RS_damage_on' : 'RS_damage_off';
 				content.elements["image_nbt"].bitmap = eventData.useNbt ? 'RS_nbt_on' : 'RS_nbt_off';
-				var elementIns = window.getElements().get('slot_input0'); 
+				/* var elementIns = window.getElements().get('slot_input0'); 
 				var clazz = elementIns.getClass(); 
 				var field = clazz.getDeclaredField("currentSelectedSlot");
 				field.setAccessible(true);
 				interfaceData.getSelectedSlot = function(name){
 					return name ? field.get(elementIns).description.name : field.get(elementIns);
-				}
+				} */
 			}
 		}
 	},

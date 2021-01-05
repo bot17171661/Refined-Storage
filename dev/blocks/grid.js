@@ -339,6 +339,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 							map.push(slot);
 							gridData.networkData.putString('deleteItemsMap', JSON.stringify(map));
 						}
+						gridData.lowPriority = true;
 						var currentCount = gridData.networkData.getInt(slot, 0);
 						gridData.networkData.putInt(slot, currentCount + _count);
 						gridData.networkData.putBoolean('update', true);
@@ -384,6 +385,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 							}
 						}
 						setItemInfoSlot(slot, itemContainer);
+						gridData.lowPriority = true;
 						var map = (asdgfasdasddsad = gridData.networkData.getString('deleteItemsMap', 'null')) != 'null' ? JSON.parse(asdgfasdasddsad) : [];
 						if(map.indexOf(slot) == -1){
 							map.push(slot);
@@ -904,7 +906,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	post_setActive: function(){
 		this.items();
-		this.refreshGui(false, false, true);
+		this.refreshGui(false, false, true, true);
 	},
 	controller_id: function () {
 		if (this.data.NETWORK_ID == "f") return '0,0,0';
@@ -1019,7 +1021,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	client: {
 		refreshModel: function(){
-			//alert('Local refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive'));
+			if(Config.dev)Logger.Log('Local refreshing Grid model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive'), 'RefinedStorageDebug');
 			var render = new ICRender.Model();
 			var model = BlockRenderer.createTexturedBlock(getGridTexture(this.networkData.getInt('block_data'), this.networkData.getBoolean('isActive')));
 			render.addEntry(model);
@@ -1055,7 +1057,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		},
 		events: {
 			refreshModel: function(eventData, packetExtra) {
-				//alert('Event refreshing model: ' + this.networkData.getInt('block_data') + ' : ' + this.networkData.getBoolean('isActive') + ' : ' + eventData.isActive);
+				if(Config.dev)Logger.Log('Event refreshing Grid model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; eventIsActive: ' + eventData.isActive, 'RefinedStorageDebug');
 				var render = new ICRender.Model();
 				var model = BlockRenderer.createTexturedBlock(getGridTexture(eventData.block_data, eventData.isActive));
 				render.addEntry(model);
@@ -1067,7 +1069,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 				if(!content || !window || !window.isOpened()) return;
 				Object.assign(gridData, eventData);
 				gridData.updateGui = function(refresh, updateFilters, nonlocal){
-					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: ' + JSON.stringify(eventData), 'RefinedStorageDebug');
+					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: refresh:' + refresh + ' updateFilters:' + updateFilters + ' eventdata:' + JSON.stringify(eventData), 'RefinedStorageDebug');
 					delete container.slots.bindings;
 					delete container.slots.slots;
 					gridData.networkData = SyncedNetworkData.getClientSyncedData(eventData.name);

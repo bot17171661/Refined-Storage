@@ -50,9 +50,9 @@ public class Main {
     public Object[] sortCrafts(List items, String textSearch, ScriptableObject originalOnlyItemsMap, ScriptableObject items2){
         HashSet hashSet = new HashSet();
         Object[] allIds = items.toArray();
+        Logger.debug("RefinedStorageDebug", "Items length: " + allIds.length);
         for(int i = 0; i < allIds.length; i++){
             ItemContainerSlot item = (ItemContainerSlot) ScriptableObjectHelper.getProperty(items2, String.valueOf(allIds[i]), null);
-            //Logger.debug("Refined Storage", "(" + ScriptableObjectHelper.getIntProperty(item, "id", 0) + ":" + ScriptableObjectHelper.getIntProperty(item, "data", 0) + ") : " + String.valueOf(allIds[i]));
             WorkbenchRecipeRegistry.addRecipesThatContainItem(item.id, item.data, hashSet);
         }
         ArrayList<WorkbenchRecipe> newArray = new ArrayList<WorkbenchRecipe>();
@@ -60,26 +60,19 @@ public class Main {
         Iterator<WorkbenchRecipe> it = hashSet.iterator();
         while (it.hasNext()) {
             WorkbenchRecipe jRecipe = it.next();
-            //Boolean isDarken = isDarkenSlot(jRecipe, originalOnlyItemsMap);
-            //ItemInstance result = jRecipe.getResult();
-            //Logger.debug("Refined Storage", "(" + result.getId() + ":" + result.getData() + ") : " + isDarken + " : " + textSearch);
             if(!textSearch.equals("-1nullfalse")) {
                 ItemInstance result = jRecipe.getResult();
                 String name = NativeItem.getNameForId(result.getId(), result.getData() != -1 ? result.getData() : 0);
-                //Logger.debug("Refined Storage", "Item name: " + name + " ; textSearch: " + textSearch);
                 if(name.toLowerCase().indexOf(textSearch.toLowerCase()) == -1) continue;
             }
-            //Logger.debug("Refined Storage", "Checking: " + jRecipe.getResult().getId());
             if(isDarkenSlot(jRecipe, originalOnlyItemsMap)){
-                //Logger.debug("Refined Storage", jRecipe.getResult().getId() + ": true");
                 newArray.add(jRecipe);
             } else {
-                //Logger.debug("Refined Storage", jRecipe.getResult().getId() + ": false");
                 posArray.add(jRecipe);
             }
         }
-        //Logger.debug("Refined Storage", newArray.size() + " : " + posArray.size());
         posArray.addAll(newArray);
+        Logger.debug("RefinedStorageDebug", "Sorting ended");
         return posArray.toArray();
     }
     public Object[] sortCrafts(ScriptableObject items, String textSearch, ScriptableObject originalOnlyItemsMap){
@@ -87,7 +80,6 @@ public class Main {
         Object[] allIds = items.getAllIds();
         for(int i = 0; i < allIds.length; i++){
             ItemContainerSlot item = (ItemContainerSlot) ScriptableObjectHelper.getProperty(items, String.valueOf(allIds[i]), null);
-            //Logger.debug("Refined Storage", "(" + ScriptableObjectHelper.getIntProperty(item, "id", 0) + ":" + ScriptableObjectHelper.getIntProperty(item, "data", 0) + ") : " + String.valueOf(allIds[i]));
             WorkbenchRecipeRegistry.addRecipesThatContainItem(item.id, item.data, hashSet);
         }
         ArrayList<WorkbenchRecipe> newArray = new ArrayList<WorkbenchRecipe>();
@@ -95,9 +87,6 @@ public class Main {
         Iterator<WorkbenchRecipe> it = hashSet.iterator();
         while (it.hasNext()) {
             WorkbenchRecipe jRecipe = it.next();
-            //Boolean isDarken = isDarkenSlot(jRecipe, originalOnlyItemsMap);
-            //ItemInstance result = jRecipe.getResult();
-            //Logger.debug("Refined Storage", "(" + result.getId() + ":" + result.getData() + ") : " + isDarken + " : " + textSearch);
             if(!textSearch.equals("-1nullfalse")) {
                 ItemInstance result = jRecipe.getResult();
                 String name = NativeItem.getNameForId(result.getId(), result.getData() != -1 ? result.getData() : 0);
@@ -109,24 +98,19 @@ public class Main {
                 posArray.add(jRecipe);
             }
         }
-        //Logger.debug("Refined Storage", newArray.size() + " : " + posArray.size());
         posArray.addAll(newArray);
         return posArray.toArray();
     }
     public boolean isDarkenSlot(WorkbenchRecipe javaRecipe, ScriptableObject originalOnlyItemsMap){
         Iterator<RecipeEntry> values = javaRecipe.getEntryCollection().iterator();
-        //ItemInstance result = javaRecipe.getResult();
         while (values.hasNext()) {
             RecipeEntry item = values.next();
             if(item == null || item.id == 0) continue;
             List<Object> Array = (List<Object>) originalOnlyItemsMap.get((item != null ? item.id : 0));
-            //Logger.debug("Refined Storage", (Array != null ? Arrays.toString((Object[]) Array.toArray()) : "null") + " : (" + result.getId() + " : " + result.getData() + ") : (" + (item != null ? item.id : "null") + " : " + (item != null ? item.data : "null") + ") : " + (Array != null ? Array.contains(Integer.valueOf(item.data)) : "null"));
             if(Array == null || (item.data != -1 && !Array.contains(Integer.valueOf(item.data)))) {
-                //Logger.debug("Refined Storage", "- true");
                 return true;
             }
         }
-        //Logger.debug("Refined Storage", "- false");
 		return false;
     }
     public void sortItems(int sortType, boolean isReverse, ItemContainer container, List<ConsString> array){
