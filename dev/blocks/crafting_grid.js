@@ -560,10 +560,6 @@ var craftingGridFuncs = {
 		if (page < 1) page = 1;
 		return __getY(page - 1);
 	},
-	compareSlots: function(slot1, slot2){
-		if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
-		return false;
-	},
 	sort: function (type, reverse, slots) {
 		if (reverse) {
 			if (type == 2) {

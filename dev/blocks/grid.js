@@ -712,10 +712,6 @@ var gridFuncs = {
 		if (page < 1) page = 1;
 		return __getY(page - 1);
 	},
-	compareSlots: function(slot1, slot2){
-		if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
-		return false;
-	},
 	sort: function (type, reverse, slots) {
 		if (reverse) {
 			if (type == 2) {
@@ -928,7 +924,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		for(var i = 0; i < Math.max(slotsKeys.length, items.length); i++){
 			var slot = this.container.getSlot(i+'slot');
 			var slot2 = items[i] || {id:0, data:0, count:0, extra: null};
-			if(!gridFuncs.compareSlots(slot, slot2)){
+			if(!compareSlots(slot, slot2)){
 				this.container.setSlot(i+'slot', slot2.id, slot2.count, slot2.data, slot2.extra || null);
 			}
 		}
@@ -949,13 +945,13 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	originalOnlyItemsMap: function(){
 		if (!this.isWorkAllowed()) {
-			return [];
+			return {};
 		}
 		return RSNetworks[this.data.NETWORK_ID].info.just_items_map;
 	},
 	originalOnlyItemsExtraMap: function(){
 		if (!this.isWorkAllowed()) {
-			return [];
+			return {};
 		}
 		return RSNetworks[this.data.NETWORK_ID].info.just_items_map_extra;
 	},

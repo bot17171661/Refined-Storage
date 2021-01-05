@@ -83,7 +83,8 @@ const runOnUiThread = function(func_, _interval){
 	save: function(){return null}
 }); */
 
-const searchController = function (_coords, _self) {
+const searchController = function (_coords, _self, _blockSource) {
+	if(!_blockSource) _blockSource = _coords.blockSource;
 	var outCoords = [];
 	outCoords.push(cts(_coords));
 	var s = false;
@@ -95,7 +96,7 @@ const searchController = function (_coords, _self) {
 			coordss.z = coords.z + sides[i][2];
 			if (outCoords.indexOf(cts(coordss)) != -1) continue;
 			outCoords.push(cts(coordss));
-			var bck = World.getBlock(coordss.x, coordss.y, coordss.z);
+			var bck = _blockSource.getBlock(coordss.x, coordss.y, coordss.z);
 			if (bck.id == BlockID.RS_controller) {
 				s = coordss;
 				return;
@@ -105,7 +106,7 @@ const searchController = function (_coords, _self) {
 		}
 	}
 	if(_self){
-		var bck = World.getBlock(_coords.x, _coords.y, _coords.z);
+		var bck = _blockSource.getBlock(_coords.x, _coords.y, _coords.z);
 		if (bck.id == BlockID.RS_controller) {
 			s = _coords;
 			return s;
@@ -270,6 +271,11 @@ function parseItemUid(itemUid){
 
 function eventToScriptable(_event){
 	return {y:_event.y, x: _event.x, type: _event.type + "", _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
+}
+
+function compareSlots(slot1, slot2){
+	if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
+	return false;
 }
 
 function cutNumber(num){
@@ -526,7 +532,7 @@ const RefinedStorage = {
 					this.data.NETWORK_ID = 'f';
 					this.setActive(false);
 				} else {
-					var controller = searchController(this);
+					var controller = searchController(this, false);
 					if (controller) {
 						var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
 						if (tile) {

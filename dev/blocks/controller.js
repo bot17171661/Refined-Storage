@@ -63,7 +63,7 @@ Block.registerPlaceFunction("RS_controller", function (coords, item, block, play
 	coords = World.canTileBeReplaced(block.id, block.data) ? coords : coords.relative;
 	var relBlock = blockSource.getBlockId(coords.x, coords.y, coords.z);
 	if (relBlock != 0 && relBlock != 9 && relBlock != 11) return;
-	World.setBlock(coords.x, coords.y, coords.z, item.id, item.data);
+	blockSource.setBlock(coords.x, coords.y, coords.z, item.id, item.data);
 	var tile = World.addTileEntity(coords.x, coords.y, coords.z, blockSource) || World.getTileEntity(coords.x, coords.y, coords.z, blockSource);
 	var energy = 0;
 	if(item.data == 3 && tile && tile.data){
@@ -448,7 +448,6 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		usage: 0,
 		lastTexture: '',
 		page_switched: false,
-		activePost: false,
 		net_map: {},
 		page: 1,
 		redstone_mode: 0,
@@ -462,7 +461,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	useNetworkItemContainer: true,
 	created: function () {
-		while (controller = searchController(this)) {
+        if(!this.blockSource)this.blockSource = BlockSource.getDefaultForDimension(this.dimension);
+		while (controller = searchController(this, false, this.blockSource)) {
 			for (var i in sides) {
 				var coordss = {};
 				coordss.x = this.x + sides[i][0];
@@ -856,6 +856,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			}
 			RSNetworks.push(_data);
 			this.networkData.sendChanges();
+			this.data.ticks = 0;
 			this.data.timer = 20;
 		//}
 	},
@@ -929,11 +930,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	isEnergySource: function () {
 		return true;
 	},
-	updateNetMap: function(){
+	updateNetMap: function(_ignoreIsActive){
 		var usage = 0;
 		var net_map = {};
 		for (var i in RSNetworks[this.data.NETWORK_ID]) {
-			if (!RSNetworks[this.data.NETWORK_ID][i] || i == "info" || RSNetworks[this.data.NETWORK_ID][i].id == BlockID.RS_controller || !RSNetworks[this.data.NETWORK_ID][i].isActive) continue;
+			if (!RSNetworks[this.data.NETWORK_ID][i] || i == "info" || RSNetworks[this.data.NETWORK_ID][i].id == BlockID.RS_controller || (!RSNetworks[this.data.NETWORK_ID][i].isActive && !_ignoreIsActive)) continue;
 			var networkTile = RSNetworks[this.data.NETWORK_ID][i];
 			var id_ = networkTile.id;
 			if(!net_map[String(id_)])
@@ -973,9 +974,9 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(this.data.timer){
 			this.data.ticks++;
 			if(this.data.ticks >= this.data.timer) {
-				this.updateItems();
 				this.updateControllerNetwork(true);
-				this.updateNetMap();
+				this.updateItems();
+				this.updateNetMap(true);
 				this.setActive(this.data.energy > this.data.usage, true, true);
 				this.refreshModel();
 				this.data.timer = false;
@@ -999,23 +1000,16 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			this.data.updateControllerNetwork = false;
 		}
 		this.updateNetMap();
-		var usage = this.data.usage;
-		if (this.data.energy >= usage && this.data.energy != 0){
-			if(!this.data.activePost) {
-				this.setActive(true);
-				this.data.activePost = true;
-			}
+		if (this.data.energy >= this.data.usage && this.data.energy != 0){
+			this.setActive(true);
 			if(Config.controller.usesEnergy && !this.data.isCreative){
-				this.data.energy -= usage;
+				this.data.energy -= this.data.usage;
 				this.networkData.putInt('energy', this.data.energy);
 				this.data.networkDataUpdate = true;
 				this.data.updateModel = true;
 			}
 		} else {
-			if(this.data.activePost) {
-				this.setActive(false);
-				this.data.activePost = false;
-			}
+			this.setActive(false);
 		}
 		if(this.data.networkDataUpdate){
 			this.networkData.sendChanges();
