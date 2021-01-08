@@ -243,6 +243,7 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		return true;
 	},
 	tick: function(){
+		StorageInterface.checkHoppers(this);
 		for(var k in this.data.importItems){
 			var importItem = this.data.importItems[k];
 			if(importItem.id == 0) continue;

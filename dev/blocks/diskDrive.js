@@ -343,11 +343,12 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			}
 			if (item.data == 0) item.data = DiskData.length;
 			var disk_data = Disk.getDiskData(item);
-			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage, items_stored: disk_data.items_stored});
+			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage + "", items_stored: disk_data.items_stored});
 		}
 		return diskDatas;
 	},
 	tick: function () {
+		StorageInterface.checkHoppers(this);
 		if(this.data.refreshModel){
 			this.refreshModel();
 			this.data.refreshModel = false;
@@ -367,7 +368,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			}
 			if (item.data == 0) item.data = DiskData.length;
 			var disk_data = Disk.getDiskData(item);
-			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage, items_stored: disk_data.items_stored});
+			diskDatas.push({id: item.id, data: item.data, storage: disk_data.storage + "", items_stored: disk_data.items_stored});
 			var diskPercent = disk_data.items_stored/disk_data.storage;
 			if(lastDiskPercent == undefined || ((lastDiskPercent < 0.75 && diskPercent >= 0.75) || (lastDiskPercent >= 0.75 && diskPercent < 0.75) || (lastDiskPercent < 1 && diskPercent >= 1)))this.data.refreshModel = true;
 			disks++;
@@ -428,13 +429,19 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	},
 	client: {
 		refreshModel: function(){
-			var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+			var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data).map(function(elem){
+				if(elem && elem.storage == 'Infinity')elem.storage = Infinity;
+				return elem;
+			}) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
 			if(Config.dev)Logger.Log('Local refreshing DiskDrive model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
 			mapDisks(this, this.networkData.getInt('block_data'), disks_data, this.networkData.getBoolean('isActive'));
 		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
-				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
+				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data).map(function(elem){
+					if(elem && elem.storage == 'Infinity')elem.storage = Infinity;
+					return elem;
+				}) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
 				if(Config.dev)Logger.Log('Event refreshing DiskDrive model: block_data: ' + eventData.block_data + ' ; isActive: ' + eventData.isActive + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
 				mapDisks(eventData.coords, eventData.block_data, disks_data, eventData.isActive);
 			}

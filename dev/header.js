@@ -622,6 +622,7 @@ const RefinedStorage = {
 		}
 		if (!params.created) {
 			params.created = function () {
+				if(!this.blockSource)this.blockSource = BlockSource.getDefaultForDimension(this.dimension);
 				//alert(cts(this) + ' : created');
 				//this.data.block_data = this.blockSource.getBlockData(this.x, this.y, this.z);
 				this.data.createdCalled = true;

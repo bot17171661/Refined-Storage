@@ -1001,7 +1001,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 			reverse_filter: this.data.reverse_filter,
 			refresh: !first,
 			updateFilters: first || updateFilters,
-			disksStorage: this.getDisksStorage(),
+			disksStorage: this.getDisksStorage() + "",
 			disksStored: this.getDisksStored(),
 			isWorkAllowed: this.isWorkAllowed()
 			//slotsLength: Object.keys(this.container.slots).length
@@ -1063,6 +1063,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		containerEvents: {
 			openGui: function(container, window, content, eventData){
 				if(!content || !window || !window.isOpened()) return;
+				eventData.disksStorage = Number(eventData.disksStorage);
 				Object.assign(gridData, eventData);
 				gridData.updateGui = function(refresh, updateFilters, nonlocal){
 					if(Config.dev)Logger.Log((nonlocal ? 'Server ' : 'Local ') + (refresh ? 'Updating' : 'Openning') + ' window: refresh:' + refresh + ' updateFilters:' + updateFilters + ' eventdata:' + JSON.stringify(eventData), 'RefinedStorageDebug');

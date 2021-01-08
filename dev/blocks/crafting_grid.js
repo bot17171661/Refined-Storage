@@ -845,7 +845,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 			refresh: !first,
 			updateFilters: first || updateFilters,
 			updateCrafts: first || updateCrafts,
-			disksStorage: this.getDisksStorage(),
+			disksStorage: this.getDisksStorage() + "",
 			disksStored: this.getDisksStored(),
 			isWorkAllowed: this.isWorkAllowed(),
 			craftsTextSearch: this.data.craftsTextSearch,
@@ -918,6 +918,8 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				craftingGridFuncs.selectRecipe(craftingGridData.selectedRecipe.javaRecipe, container, craftingGridData.originalOnlyItemsExtraMap, craftingGridData.originalOnlyItemsMap, craftingGridData.originalItemsMap);
 			},
 			openGui: function(container, window, content, eventData){
+				if(!content || !window || !window.isOpened()) return;
+				eventData.disksStorage = Number(eventData.disksStorage);
 				Object.assign(craftingGridData, eventData);
 				craftingGridData.container = container;
 				craftingGridData.updateGui = function(refresh, updateFilters, updateCrafts, nonlocal){
