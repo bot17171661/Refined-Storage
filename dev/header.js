@@ -136,10 +136,12 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			coordss.z = coords.z + sides[i][2];
 			if (outCoords.indexOf(cts(coordss)) != -1) continue;
 			outCoords.push(cts(coordss));
-			var bck = {id: blockSource_.getBlockId(coordss.x, coordss.y, coordss.z)};
+			var bck = blockSource_.getBlock(coordss.x, coordss.y, coordss.z);
 			var isRsBlock = (RS_blocks.indexOf(bck.id) != -1);
 			if (bck.id == BlockID.RS_controller) {
+				if(net_id == 'f') return;
 				blockSource_.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+                if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
 				continue;
 			} else if (bck.id == BlockID.RS_cable) {
 				if(net_id != 'f' && RSNetworks[net_id]){
@@ -155,6 +157,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			} else if (isRsBlock) {
 				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, blockSource_) || World.addTileEntity(coordss.x, coordss.y, coordss.z, blockSource_);
 				if (tile) {
+					if(net_id == 'f' && !compareCoords(_coords, tile.data.controller_coords)) return;
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
 					tile.update_network(net_id, _first || (_defaultActive != undefined));
 					if(_defaultActive)tile.setActive(_defaultActive);
@@ -275,6 +278,11 @@ function eventToScriptable(_event){
 
 function compareSlots(slot1, slot2){
 	if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
+	return false;
+}
+
+function compareCoords(_coords1, _coords2){
+	if(_coords1.x == _coords2.x && _coords1.y == _coords2.y && _coords1.z == _coords2.z) return true;
 	return false;
 }
 

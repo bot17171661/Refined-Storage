@@ -468,19 +468,21 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				coordss.x = this.x + sides[i][0];
 				coordss.y = this.y + sides[i][1];
 				coordss.z = this.z + sides[i][2];
-				var bck = this.blockSource.getBlockId(coordss.x, coordss.y, coordss.z);
-				if (RS_blocks.indexOf(bck) != -1) {
-					if(bck == BlockID.RS_cable){
+				var bck = this.blockSource.getBlock(coordss.x, coordss.y, coordss.z);
+				if (RS_blocks.indexOf(bck.id) != -1) {
+					if(bck.id == BlockID.RS_cable){
 						for(var i in RSNetworks){
 							if(RSNetworks[i][cts(coordss)]){
 								delete RSNetworks[i][cts(coordss)];
 								this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+								if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
 							}
 						}
 					} else {
 						var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, this.blockSource);
 						if (tile && tile.data.NETWORK_ID != 'f' && tile.data.NETWORK_ID != this.data.NETWORK_ID) {
 							this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+							if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
 						}
 					}
 				}
@@ -866,7 +868,6 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	updateControllerNetwork: function(_first){
-		//alert('Controller network update');
 		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, _first ? undefined : this.data.isActive/* , function(coords, block){
 			if(block.id == BlockID.RS_controller/*  && cts(this) != cts(coords) ){
 				alert('WIY WIY WIY WIY');
