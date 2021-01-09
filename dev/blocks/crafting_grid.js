@@ -125,7 +125,7 @@ function craftingGridSwitchCraftsPage(page, container, ignore, dontMoveSlider){
 		var a = i + (page * x_count);
 		var item = crafts[a] ? crafts[a].getResult() : { id: 0, data: 0, count: 0, extra: null };
 		container.setSlot("item_craft_slot" + i, item.id, item.count, item.data > 0 ? item.data : 0, item.extra || null);
-		content.elements["item_craft_slot" + i].darken = craftingGridFuncs.isDarkenSlot(crafts[a], craftingGridData.originalOnlyItemsMap, craftingGridData.originalItemsMap, a);
+		if(crafts[a])content.elements["item_craft_slot" + i].darken = craftingGridData.isDarkenMap["e" + crafts[a].getRecipeUid()];//craftingGridFuncs.isDarkenSlot(crafts[a], craftingGridData.originalOnlyItemsMap, craftingGridData.originalItemsMap, a);
 	}
 	contentProvider.refreshElements();
 	return true;
@@ -629,7 +629,15 @@ var craftingGridFuncs = {
 	},
 	updateCrafts: function(items, craftsTextSearch, onlyItemsMap, _object){
 		var millis = java.lang.System.currentTimeMillis();
-		var sorted = ScriptableObjectHelper.createArray(RSJava.sortCrafts(items, craftsTextSearch ? craftsTextSearch : "-1nullfalse", onlyItemsMap, _object));
+		var inventoryItems = searchItem(-1, -1, true);
+		var inventoryOnlyItemsMap = {};
+		for(var i in inventoryItems){
+			if(inventoryOnlyItemsMap[inventoryItems[i].id])
+				inventoryOnlyItemsMap[inventoryItems[i].id].push(inventoryItems[i].data);
+			else
+				inventoryOnlyItemsMap[inventoryItems[i].id] = [inventoryItems[i].data];
+		}
+		var sorted = ScriptableObjectHelper.createArray(RSJava.sortCrafts(items, craftsTextSearch ? craftsTextSearch : "-1nullfalse", Object.assign(inventoryOnlyItemsMap, onlyItemsMap), _object, inventoryItems, craftingGridData.isDarkenMap));
 		if(Config.dev)Logger.Log('Crafts array sorted on: ' + (java.lang.System.currentTimeMillis() - millis), "RefinedStorageDebug");
 		return sorted;
 	},
@@ -667,7 +675,15 @@ var craftingGridFuncs = {
 			else
 				smallItemsMap[itemUid] = 1;
 			itemCount = ((itemI = originalItemsMap.indexOf(itemUid)) != -1 && container.getSlot(craftingGridData.slotsKeys[itemI]).count >= smallItemsMap[itemUid]) ? 1 : 0;
-			if(!itemCount) craftable = false;
+			if(!itemCount) {
+				var playerItem = searchItem(item.id, item.data, itemExtra);
+				if(playerItem && playerItem.count >= smallItemsMap[itemUid] - (itemI != -1 ? container.getSlot(craftingGridData.slotsKeys[itemI]).count : 0)){
+					itemExtra = playerItem.extra;
+					itemCount = 1;
+				} else {
+					craftable = false;
+				}
+			}
 			if(itemCount){
 				if(fixedItemsMap[itemUid])
 					fixedItemsMap[itemUid]++;
@@ -721,18 +737,19 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		if(!this.networkEntity) return Logger.Log(Item.getName(this.blockInfo.id, this.blockInfo.data) + ' model on: ' + cts(this) + ' cannot be displayed');
 		this.sendPacket("refreshModel", {block_data: this.data.block_data, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z, dimension: this.dimension}});
 	},
-	provideCraft: function(count){
+	provideCraft: function(player){
 		if(!this.isWorkAllowed() || !this.data.selectedRecipe || !this.data.selectedRecipe.craftable) return false;
 		if(Config.dev)Logger.Log('Providing craft: result: ' + JSON.stringify(this.data.selectedRecipe.result), 'RefinedStorageDebug');
 		var netFuncs = RSNetworks[this.data.NETWORK_ID].info;
 		var selectedRecipe = this.data.selectedRecipe;
 		var javaRecipe = selectedRecipe.javaRecipe;
 		var result = selectedRecipe.result;
+		var playerSlots = {};
 		for(var i in selectedRecipe.items){
 			var splited = i.split('_');
 			var itemExtra = splited[2] ? ItemExtraData(Number(splited[2])) : null;
 			var item = {id: Number(splited[0]), count: selectedRecipe.items[i], data: Number(splited[1]), extra: itemExtra};
-			if(!netFuncs.itemCanBeDeleted(item)) return false;
+			if(!netFuncs.itemCanBeDeleted(item) && (!(playerSlots[i] = searchItem(item.id, item.data, item.extra, false, false, player)) || playerSlots[i].count < item.count)) return false;
 		}
 		var fieldApi = new WorkbenchFieldAPI(this.container);
 		Callback.invokeCallback("CraftRecipePreProvided", javaRecipe, this.container);
@@ -754,19 +771,23 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				}
 			}
 		};
-		var refreshRecipe = false;
+		//var refreshRecipe = false;
 		for(var i in selectedRecipe.items){
 			var splited = i.split('_');
 			var itemExtra = splited[2] ? ItemExtraData(Number(splited[2])) : null;
 			var item = {id: Number(splited[0]), count: selectedRecipe.items[i], data: Number(splited[1]), extra: itemExtra};
-			netFuncs.deleteItem(item, null, true);
-			if(!netFuncs.itemCanBeDeleted(item))refreshRecipe = true;
+			var ndeleted = netFuncs.deleteItem(item, null, true);
+			if(ndeleted > 0 && (playerSlotData = playerSlots[i])){
+				var __PlayerActor = new PlayerActor(player);
+				__PlayerActor.setInventorySlot(playerSlotData.slot, playerSlotData.id, playerSlotData.count - ndeleted, playerSlotData.data, playerSlotData.extra);
+			}
+			//if(!netFuncs.itemCanBeDeleted(item))refreshRecipe = true;
 		};
-		if(refreshRecipe){
+		/* if(refreshRecipe){
 			cbkUsedFunc.apply(this);
 			//this.post_items(true);
 			//this.selectRecipe(javaRecipe);
-		};
+		}; */
 		cbkUsedFunc.apply(this);
 		Callback.invokeCallback("CraftRecipeProvided", javaRecipe, this.container, fieldApi.isPrevented());
 		if(fieldApi.isPrevented()) return false;
@@ -1006,6 +1027,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 						var crafts2Thread = java.lang.Thread({
 							run: function(){
 								try {
+									craftingGridData.isDarkenMap = {};
 									craftingGridData.crafts = craftingGridFuncs.updateCrafts(craftingGridData.slotsKeys, craftingGridData.craftsTextSearch, craftingGridData.originalOnlyItemsMap, container.slots);
 									craftingGridData.darkenSlots = {};
 									craftingGridSwitchCraftsPage(refresh ? craftingGridData.lastCraftsPage : 1, container, true);
@@ -1068,7 +1090,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 			}
 			var result = this.data.selectedRecipe.result;
 			for(var count = 0; count < eventData.count; count += result.count){
-				if(!this.provideCraft()) break;
+				if(!this.provideCraft(connectedClient.getPlayerUid())) break;
 			}
 			this.items();
 			this.refreshGui(false, false, true, true);

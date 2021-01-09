@@ -47,13 +47,17 @@ public class Main {
     public String getItemUid(ItemInstance item){
         return item.getId() + "_" + item.getData() + (item.getExtraValue() != 0 ? "_" + item.getExtraValue() : "");
     }
-    public Object[] sortCrafts(List items, String textSearch, ScriptableObject originalOnlyItemsMap, ScriptableObject items2){
+    public Object[] sortCrafts(List items, String textSearch, ScriptableObject originalOnlyItemsMap, ScriptableObject items2, List bonusItems, ScriptableObject isDarkenMap){
         HashSet hashSet = new HashSet();
-        Object[] allIds = items.toArray();
-        Logger.debug("RefinedStorageDebug", "Items length: " + allIds.length);
-        for(int i = 0; i < allIds.length; i++){
-            ItemContainerSlot item = (ItemContainerSlot) ScriptableObjectHelper.getProperty(items2, String.valueOf(allIds[i]), null);
+        Logger.debug("RefinedStorageDebug", "Items length: " + items.size());
+        for(int i = 0; i < items.size(); i++){
+            ItemContainerSlot item = (ItemContainerSlot) ScriptableObjectHelper.getProperty(items2, String.valueOf(items.get(i)), null);
             WorkbenchRecipeRegistry.addRecipesThatContainItem(item.id, item.data, hashSet);
+        }
+        Logger.debug("RefinedStorageDebug", "bonusItems length: " + bonusItems.size());
+        for(int k = 0; k < bonusItems.size(); k++){
+            ScriptableObject item2 = (ScriptableObject) bonusItems.get(k);
+            WorkbenchRecipeRegistry.addRecipesThatContainItem((int) ScriptableObjectHelper.getProperty(item2, "id", 0), (int) ScriptableObjectHelper.getProperty(item2, "data", 0), hashSet);
         }
         ArrayList<WorkbenchRecipe> newArray = new ArrayList<WorkbenchRecipe>();
         ArrayList<WorkbenchRecipe> posArray = new ArrayList<WorkbenchRecipe>();
@@ -65,7 +69,9 @@ public class Main {
                 String name = NativeItem.getNameForId(result.getId(), result.getData() != -1 ? result.getData() : 0);
                 if(name.toLowerCase().indexOf(textSearch.toLowerCase()) == -1) continue;
             }
-            if(isDarkenSlot(jRecipe, originalOnlyItemsMap)){
+            boolean isDarken = isDarkenSlot(jRecipe, originalOnlyItemsMap);
+            isDarkenMap.put("e" + jRecipe.getRecipeUid(), isDarkenMap, Boolean.valueOf(isDarken));
+            if(isDarken){
                 newArray.add(jRecipe);
             } else {
                 posArray.add(jRecipe);
@@ -73,32 +79,6 @@ public class Main {
         }
         posArray.addAll(newArray);
         Logger.debug("RefinedStorageDebug", "Sorting ended");
-        return posArray.toArray();
-    }
-    public Object[] sortCrafts(ScriptableObject items, String textSearch, ScriptableObject originalOnlyItemsMap){
-        HashSet hashSet = new HashSet();
-        Object[] allIds = items.getAllIds();
-        for(int i = 0; i < allIds.length; i++){
-            ItemContainerSlot item = (ItemContainerSlot) ScriptableObjectHelper.getProperty(items, String.valueOf(allIds[i]), null);
-            WorkbenchRecipeRegistry.addRecipesThatContainItem(item.id, item.data, hashSet);
-        }
-        ArrayList<WorkbenchRecipe> newArray = new ArrayList<WorkbenchRecipe>();
-        ArrayList<WorkbenchRecipe> posArray = new ArrayList<WorkbenchRecipe>();
-        Iterator<WorkbenchRecipe> it = hashSet.iterator();
-        while (it.hasNext()) {
-            WorkbenchRecipe jRecipe = it.next();
-            if(!textSearch.equals("-1nullfalse")) {
-                ItemInstance result = jRecipe.getResult();
-                String name = NativeItem.getNameForId(result.getId(), result.getData() != -1 ? result.getData() : 0);
-                if(!name.matches(textSearch)) continue;
-            }
-            if(isDarkenSlot(jRecipe, originalOnlyItemsMap)){
-                newArray.add(jRecipe);
-            } else {
-                posArray.add(jRecipe);
-            }
-        }
-        posArray.addAll(newArray);
         return posArray.toArray();
     }
     public boolean isDarkenSlot(WorkbenchRecipe javaRecipe, ScriptableObject originalOnlyItemsMap){

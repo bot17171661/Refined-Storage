@@ -30,16 +30,20 @@ Callback.addCallback("LevelLeft", function () {
 
 var levelloaded = false;
 
-const searchItem = function (id, data, list, reverse, playerUid) {
+const searchItem = function (id, data, extra, list, reverse, playerUid) {
 	var player = playerUid ? new PlayerActor(playerUid) : Player;
 	if(typeof(data) != "number")data = -1;
 	if(typeof(id) != "number")id = -1;
+	if(typeof(extra) == "boolean"){
+		playerUid = reverse; reverse = list; list = extra;
+		extra = null;
+	}
 	if(reverse){
 		if(list){
 			var itemsList = [];
 			for (var i = 35; i >= 0; i--) {
 				var item = player.getInventorySlot(i);
-				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
+				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (!item.extra || item.extra.getAllCustomData()) == (!extra || extra.getAllCustomData())) {
 					itemsList.push({
 						id: item.id,
 						data: item.data,
@@ -52,7 +56,7 @@ const searchItem = function (id, data, list, reverse, playerUid) {
 			return itemsList;
 		} else for (var i = 35; i >= 0; i--) {
 			var item = player.getInventorySlot(i);
-			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
+			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (!item.extra || item.extra.getAllCustomData()) == (!extra || extra.getAllCustomData())) {
 				return {
 					id: item.id,
 					data: item.data,
@@ -67,7 +71,7 @@ const searchItem = function (id, data, list, reverse, playerUid) {
 			var itemsList = [];
 			for (var i = 0; i <= 35; i++) {
 				var item = player.getInventorySlot(i);
-				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
+				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (!item.extra || item.extra.getAllCustomData()) == (!extra || extra.getAllCustomData())) {
 					itemsList.push({
 						id: item.id,
 						data: item.data,
@@ -80,7 +84,7 @@ const searchItem = function (id, data, list, reverse, playerUid) {
 			return itemsList;
 		} else for (var i = 0; i <= 35; i++) {
 			var item = player.getInventorySlot(i);
-			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1)) {
+			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (!item.extra || item.extra.getAllCustomData()) == (!extra || extra.getAllCustomData())) {
 				return {
 					id: item.id,
 					data: item.data,
