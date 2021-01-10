@@ -304,6 +304,9 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		}
 		return count;
 	}, */
+	pre_created: function(){
+		this.data.importItems = [{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null},{id:0,data:0,extra:null}];
+	},
 	itemCanBePushed: function(item, count, _inverted){
 		count = count || item.count;
 		if (!this.isWorkAllowed()) return _inverted ? count : 0;

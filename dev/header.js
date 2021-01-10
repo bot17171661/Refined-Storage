@@ -641,6 +641,7 @@ const RefinedStorage = {
 				if(!this.blockSource)this.blockSource = BlockSource.getDefaultForDimension(this.dimension);
 				//alert(cts(this) + ' : created');
 				//this.data.block_data = this.blockSource.getBlockData(this.x, this.y, this.z);
+				this.data.upgrades = {};
 				this.data.createdCalled = true;
 				if (this.pre_created) this.pre_created();
 				/* var controller = searchController(this);
