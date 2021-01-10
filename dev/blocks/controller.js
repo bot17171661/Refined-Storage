@@ -55,7 +55,7 @@ Item.registerIconOverrideFunction(BlockID['RS_controller'], function(item, isMod
 	}
 })
 
-Block.registerDropFunction("RS_controller", function (coords, id, data, diggingLevel, toolLevel) {
+Block.registerDropFunction("RS_controller", function (coords, id, data, diggingLevel, toolLevel, player, _blockSource) {
 	return [];
 });
 
@@ -1032,10 +1032,10 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 	},
 	destroy: function () {
 		if (this.data.NETWORK_ID != "f" && RSNetworks[this.data.NETWORK_ID]) {
-			this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 			set_net_for_blocks(this, 'f');
 			delete RSNetworks[this.data.NETWORK_ID];
 		}
+		this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 		this.data.NETWORK_ID == "f";
 		if(this.data.isCreative){
 			this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, 3, null);

@@ -139,7 +139,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			var bck = blockSource_.getBlock(coordss.x, coordss.y, coordss.z);
 			var isRsBlock = (RS_blocks.indexOf(bck.id) != -1);
 			if (bck.id == BlockID.RS_controller) {
-				if(net_id == 'f') return;
+				if(net_id == 'f') continue;
 				blockSource_.destroyBlock(coordss.x, coordss.y, coordss.z, true);
                 if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
 				continue;
@@ -484,7 +484,13 @@ Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _block
 	}
 	var isOldBlock = RS_blocks.indexOf(oldBlock.id) != -1;
 	var isNewBlock = RS_blocks.indexOf(newBlock.id) != -1;
-	if(isNewBlock && newBlock.id != BlockID.RS_cable)World.addTileEntity(coords.x, coords.y, coords.z, _blockSource);
+	if(isNewBlock && newBlock.id != BlockID.RS_cable){
+		var _newTile = World.addTileEntity(coords.x, coords.y, coords.z, _blockSource);
+		if(newBlock.id == BlockID.RS_controller && newBlock.data == 3){
+			_newTile.data.isCreative = true;
+			_newTile.data.energy = Config.controller.energyCapacity;
+		}
+	}
 	if(oldBlock.id != BlockID.RS_controller && isOldBlock)for(var i in sides){
 		var zCoords = {
 			x: coords.x + sides[i][0],
@@ -713,6 +719,7 @@ const RefinedStorage = {
 			params.destroy = function(){
 				if(this.pre_destroy) this.pre_destroy();
 				if(this.data.NETWORK_ID != 'f' && RSNetworks[this.data.NETWORK_ID]) delete RSNetworks[this.data.NETWORK_ID][cts(this)];
+				this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 				this.data.NETWORK_ID = 'f';
 				//BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
 				if(this.post_destroy) this.post_destroy();

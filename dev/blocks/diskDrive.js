@@ -424,13 +424,13 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		}
 		return items;
 	},
-	pre_destroy: function(){
-		if(RSNetworks && RSNetworks[this.data.NETWORK_ID] && RSNetworks[this.data.NETWORK_ID].info)RSNetworks[this.data.NETWORK_ID].info.updateItems()
+	post_destroy: function(){
+		if(RSNetworks && RSNetworks[this.data.LAST_NETWORK_ID] && RSNetworks[this.data.LAST_NETWORK_ID].info)RSNetworks[this.data.LAST_NETWORK_ID].info.updateItems();
 	},
 	client: {
 		refreshModel: function(){
 			var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data).map(function(elem){
-				if(elem && elem.storage == 'Infinity')elem.storage = Infinity;
+				if(elem)elem.storage = Number(elem.storage);
 				return elem;
 			}) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
 			if(Config.dev)Logger.Log('Local refreshing DiskDrive model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
@@ -439,7 +439,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		events: {
 			refreshModel: function(eventData, connectedClient){
 				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data).map(function(elem){
-					if(elem && elem.storage == 'Infinity')elem.storage = Infinity;
+					if(elem)elem.storage = Number(elem.storage);
 					return elem;
 				}) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
 				if(Config.dev)Logger.Log('Event refreshing DiskDrive model: block_data: ' + eventData.block_data + ' ; isActive: ' + eventData.isActive + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');

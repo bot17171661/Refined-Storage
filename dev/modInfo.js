@@ -12,7 +12,7 @@
     var padding = 40;
     var thisWindows = {};
     var mainWindows = ['main'];//['close_tab', 'main', 'tabs'];
-    var infoWindows = ['info'];
+    var infoWindows = ['info', 'donations'];
     var changelogWindows = ['changelog'];
     var allWindows = mainWindows.concat(infoWindows).concat(changelogWindows);
     var controllerIconAnim = [];
@@ -206,7 +206,7 @@
             z: 10,
             font: {
                 color: android.graphics.Color.WHITE,
-                size: 40,
+                size: 40/562.5*UI.getScreenHeight(),//40,
                 shadow: 0
             }
         },
@@ -218,7 +218,7 @@
             z: 10,
             font: {
                 color: android.graphics.Color.LTGRAY,
-                size: 28,
+                size: 28/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         },
@@ -230,7 +230,7 @@
             z: 10,
             font: {
                 color: android.graphics.Color.LTGRAY,
-                size: 20,
+                size: 20/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         },
@@ -242,7 +242,7 @@
             z: 10,
             font: {
                 color: android.graphics.Color.LTGRAY,
-                size: 20,
+                size: 20/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         },
@@ -263,7 +263,7 @@
                 color: android.graphics.Color.argb(255, 70, 70, 255),
                 bold: true,
                 underline: true,
-                size: 20,
+                size: 20/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         },
@@ -284,7 +284,7 @@
                 color: android.graphics.Color.argb(255, 70, 70, 255),
                 bold: true,
                 underline: true,
-                size: 20,
+                size: 20/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         },
@@ -296,7 +296,7 @@
             z: 10,
             font: {
                 color: android.graphics.Color.LTGRAY,
-                size: 20,
+                size: 20/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         }
@@ -314,6 +314,7 @@
         }],
         elements: infoElements
     });
+    thisWindows["info"].forceRefresh();
 
     var firstOpen = true;
     var textsArray = ['modLinks', 'modLink1', 'modLink2'];
@@ -350,6 +351,63 @@
         }],
         elements: changelogElements
     });
+    thisWindows["changelog"].forceRefresh();
+
+    /* var donationsWindowLocation = Object.assign({}, infoWindowLocation);
+    donationsWindowLocation.x += donationsWindowLocation.width*0.7;
+    donationsWindowLocation.width *= 0.3;
+    donationsWindowLocation.height = thisWindows["info"].location.windowToGlobal(224);
+    var donationsWindowHeight = donationsWindowLocation.height*1000/donationsWindowLocation.width;
+    var donationsElements = {
+        'credits': {
+            type: "text",
+            x: 100,
+            y: 10,
+            text: Translation.translate('Top donators'),
+            needWidth: 900,
+            z: 10,
+            font: {
+                color: android.graphics.Color.argb(255, 225, 225, 0),
+                bold: true,
+                size: 1,
+                shadow: 0
+            }
+        }
+    }
+    thisWindows["donations"] = new UI.Window({
+        location: donationsWindowLocation, 
+        drawing: [{
+            type: "color",
+            color: android.graphics.Color.argb(76, 76, 76, 100)//android.graphics.Color.TRANSPARENT
+        }],
+        elements: donationsElements
+    });
+    thisWindows["donations"].forceRefresh();
+    var firstOpen2 = true;
+    var textsArray2 = ['credits'];
+    thisWindows["donations"].setEventListener({
+        onOpen: function(window12){
+            if(!firstOpen2) return;
+            firstOpen2 = false;
+            for(var i = 0; i < textsArray2.length; i++){
+                var elementIns = window12.getElements().get(textsArray2[i]);
+                var clazz = elementIns.getClass();
+                var field = clazz.getDeclaredField("textBounds");
+                field.setAccessible(true);
+                var value = field.get(elementIns).width();
+                donationsElements[textsArray2[i]].font.size = donationsElements[textsArray2[i]].needWidth/value;
+                // jSetInterval(function(){
+                //     var elementIns = window12.getElements().get('credits');
+                //     var clazz = elementIns.getClass();
+                //     var field = clazz.getDeclaredField("textBounds");
+                //     field.setAccessible(true);
+                //     var value = field.get(elementIns).width();
+                //     alert(value);
+                // }, 1000);
+            }
+            window12.forceRefresh();
+        }
+    }) */
 
     Callback.addCallback('NativeGuiChanged', function(name, lastName, isPushEvent){
         if(name == 'start_screen')
@@ -489,7 +547,7 @@
                 multiline: true,
                 font: {
                     color: android.graphics.Color.WHITE,
-                    size: 35,
+                    size: 35/562.5*UI.getScreenHeight(),
                     shadow: 0
                 }
             }
