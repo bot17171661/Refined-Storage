@@ -8,6 +8,38 @@
     var Intent = android.content.Intent;
     
     var changelogEnabled = false;
+
+    function getUrlContent(_url, _parse){
+        var isError = {data: undefined};
+        try {
+            var input;
+            var inputOpened = true;
+            result = '';
+            /* jSetTimeout(function(){//522;
+                if(result.length == 0 && !isError.data){
+                    alert('[RefinedStoragePE] Your internet connection is very slow\nIf you do not want to see this message and want make loading faster then change "changelogEnabled" to "false" in RefinedStoragePE config file');
+                }
+            }, 5000); */
+            var _URL_ = new JAVA_URL(_url);
+            input = new BufferedReader(new InputStreamReader(_URL_.openStream()));
+            while (inputOpened) {
+                inputLine = input.readLine();
+                if (inputLine) {
+                    result += inputLine + '\n';
+                } else {
+                    input.close();
+                    var data = result.substr(0, result.length - 1);
+                    if(_parse) data = JSON.parse(data);
+                    return {data: data};
+                }
+            }
+            return {error:'408 Request Timeout'};
+        } catch (e) {
+            isError.data = e;
+            Logger.Log('getUrlContent Error: ' + JSON.stringify(e), 'RefinedStoragePE');
+            return {error: e};
+        }
+    }
     
     var padding = 40;
     var thisWindows = {};
@@ -292,11 +324,11 @@
             type: "text",
             x: 272,
             y: 0,
-            text: Translation.translate('Credits') + ' : Zero, DeimoN, Asasen, BANER',
+            text: Translation.translate('Credits') + ' : Zero, DeimoN, Asasen, BANER, Hunabis, Dray',
             z: 10,
             font: {
                 color: android.graphics.Color.LTGRAY,
-                size: 20/562.5*UI.getScreenHeight(),
+                size: 16/562.5*UI.getScreenHeight(),
                 shadow: 0
             }
         }
@@ -342,7 +374,7 @@
         last: -1
     }
     var changelogWindowLocation = Object.assign({}, infoWindowLocation);
-    changelogWindowLocation.scrollHeight = 10000;
+    //changelogWindowLocation.scrollY = 100;
     thisWindows["changelog"] = new UI.Window({
         location: changelogWindowLocation, 
         drawing: [{
@@ -353,21 +385,22 @@
     });
     thisWindows["changelog"].forceRefresh();
 
-    /* var donationsWindowLocation = Object.assign({}, infoWindowLocation);
+    var donationsWindowLocation = Object.assign({}, infoWindowLocation);
     donationsWindowLocation.x += donationsWindowLocation.width*0.7;
     donationsWindowLocation.width *= 0.3;
     donationsWindowLocation.height = thisWindows["info"].location.windowToGlobal(224);
     var donationsWindowHeight = donationsWindowLocation.height*1000/donationsWindowLocation.width;
+    var _yoffset = (donationsWindowHeight - 70)/5.5;
     var donationsElements = {
-        'credits': {
+        'header': {
             type: "text",
             x: 100,
             y: 10,
-            text: Translation.translate('Top donators'),
+            text: Translation.translate('Top donaters'),
             needWidth: 900,
             z: 10,
             font: {
-                color: android.graphics.Color.argb(255, 225, 225, 0),
+                color: android.graphics.Color.argb(255, 251, 140, 43),//android.graphics.Color.argb(255, 225, 225, 0),
                 bold: true,
                 size: 1,
                 shadow: 0
@@ -378,39 +411,54 @@
         location: donationsWindowLocation, 
         drawing: [{
             type: "color",
-            color: android.graphics.Color.argb(76, 76, 76, 100)//android.graphics.Color.TRANSPARENT
+            color: /* android.graphics.Color.argb(76, 76, 76, 100) */android.graphics.Color.TRANSPARENT
         }],
         elements: donationsElements
     });
     thisWindows["donations"].forceRefresh();
     var firstOpen2 = true;
-    var textsArray2 = ['credits'];
+    var textsArray2 = ['header'];
     thisWindows["donations"].setEventListener({
         onOpen: function(window12){
             if(!firstOpen2) return;
             firstOpen2 = false;
             for(var i = 0; i < textsArray2.length; i++){
-                var elementIns = window12.getElements().get(textsArray2[i]);
-                var clazz = elementIns.getClass();
-                var field = clazz.getDeclaredField("textBounds");
-                field.setAccessible(true);
-                var value = field.get(elementIns).width();
-                donationsElements[textsArray2[i]].font.size = donationsElements[textsArray2[i]].needWidth/value;
-                // jSetInterval(function(){
-                //     var elementIns = window12.getElements().get('credits');
-                //     var clazz = elementIns.getClass();
-                //     var field = clazz.getDeclaredField("textBounds");
-                //     field.setAccessible(true);
-                //     var value = field.get(elementIns).width();
-                //     alert(value);
-                // }, 1000);
+                var _name = textsArray2[i];
+                var drawScale = window12.location.getDrawingScale();
+                var _font = new JavaFONT(donationsElements[_name].font);
+                var value = _font.getBounds(donationsElements[_name].text, donationsElements[_name].x * drawScale, donationsElements[_name].y * drawScale, parseFloat(1.0)).width();
+                donationsElements[_name].font.size = Math.min(parseFloat(donationsElements[_name].needWidth/value), 70);
+                //alert(donationsElements[_name].font.size);
+                var _font = new JavaFONT(donationsElements[_name].font);
+                var value = _font.getBounds(donationsElements[_name].text, donationsElements[_name].x * drawScale, donationsElements[_name].y * drawScale, parseFloat(1.0)).width();
+                donationsElements[_name].x = 500 - value/2;
             }
             window12.forceRefresh();
         }
-    }) */
+    });
+    
+    var donaters = getUrlContent('https://raw.githubusercontent.com/bot17171661/RefinedStorageDon/main/info.json', true).data;
+    if(donaters)for(var k in donaters){
+        donationsElements['d' + k] = {
+            type: "text",
+            x: 100,
+            y: 10 + _yoffset*(Number(k) + 1),
+            text: donaters[k].username + "  -  " + donaters[k].amount + " " + donaters[k].currency,
+            needWidth: 900,
+            z: 10,
+            font: {
+                color: android.graphics.Color.argb(255, 251, 140, 43),//android.graphics.Color.argb(255, 225, 225, 0),
+                //bold: true,
+                size: 1,
+                shadow: 0
+            }
+        }
+        textsArray2.push('d' + k);
+    }
+    thisWindows["donations"].forceRefresh();
 
     Callback.addCallback('NativeGuiChanged', function(name, lastName, isPushEvent){
-        if(name == 'start_screen')
+        if(name == 'start_screen' && !thisWindows['main'].isOpened())
             ModInfoUI_Button_Container.openAs(ModInfoUI_Button);
         else if(ModInfoUI_Button_Container.isOpened())
             ModInfoUI_Button_Container.close();
@@ -462,38 +510,7 @@
     }
 
     if(!Config.changelogEnabled) return;
-
     _setTip('[RefinedStoragePE] Getting versions info');
-    
-    function getUrlContent(_url){
-        var isError = {data: undefined};
-        try {
-            var input;
-            var inputOpened = true;
-            result = '';
-            jSetTimeout(function(){//522;
-                if(result.length == 0 && !isError.data){
-                    alert('[RefinedStoragePE] Your internet connection is very slow\nIf you do not want to see this message and want make loading faster then change "changelogEnabled" to "false" in RefinedStoragePE config file');
-                }
-            }, 5000);
-            var _URL_ = new JAVA_URL(_url);
-            input = new BufferedReader(new InputStreamReader(_URL_.openStream()));
-            while (inputOpened) {
-                inputLine = input.readLine();
-                if (inputLine) {
-                    result += inputLine + '\n';
-                } else {
-                    input.close();
-                    return {data: result.substr(0, result.length - 1)};
-                }
-            }
-            return {error:'408 Request Timeout'};
-        } catch (e) {
-            isError.data = e;
-            Logger.Log('Changelog Error: ' + JSON.stringify(e), 'RefinedStoragePE');
-            return {error: e};
-        }
-    }
 
     var versionsMap = getUrlContent('https://raw.githubusercontent.com/bot17171661/RefinedStorageChangelog/master/map.txt');
     if(versionsMap.data)versionsMap = JSON.parse(versionsMap.data);
@@ -583,6 +600,8 @@
                 }
             }
         }
+        thisWindows["changelog"].location.setScroll(0, thisWindows["changelog"].location.windowToGlobal(_y + 125));
+        if(thisWindows["changelog"].isOpened())thisWindows["changelog"].updateWindowLocation();
         changelogElements["versionText" + _id] = {
             type: "text",
             id: _id,

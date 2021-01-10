@@ -154,30 +154,21 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 			size: 9
 		}
 	}
-	var headerNameWidth;
-	(function(){
-		headerWindow.forceRefresh();
-		var elementIns = headerWindow.getElements().get('itemInfoName');
-		var clazz = elementIns.getClass();
-		var field = clazz.getDeclaredField("textBounds");
-		field.setAccessible(true);
-		headerNameWidth = function(){
-			return field.get(elementIns).width();
-		}
-	})();
 	function setItemInfoSlot(_item, container){
 		gridData.selectedItemInfoSlot = _item;
 		var item = container.getSlot(_item);
 		container.setSlot('itemInfoSlot', item.id, 1, item.data, item.extra);
 		var fullName = Item.getName(item.id, item.data).replace(/§./g, '');
 		var splitedName = fullName.split('\n');
-		container.setText('itemInfoName', (splitedName[0].length > 40 ? splitedName[0].substr(0, 40) + '...' : splitedName[0]) + ' (' + numberWithCommas(item.count) + ')');
+		var text = (splitedName[0].length > 40 ? splitedName[0].substr(0, 40) + '...' : splitedName[0]) + ' (' + numberWithCommas(item.count) + ')';
+		container.setText('itemInfoName', text);
 		container.setText('itemInfoDescription', splitedName.slice(1).join('\n'));
-		// var nameWidth = headerNameWidth();
-		// alert(headerElements['itemInfoName'].x + " + " + nameWidth + " + " + 5 + " = " + (headerElements['itemInfoName'].x + nameWidth + 5));
-		// headerElements['itemInfoFrame'].width = 50 + nameWidth + 5;
-		// headerWindow.forceRefresh();
-		// headerWindow.getElements().get('itemInfoFrame').descriptionWatcher.refresh();
+		var drawScale = headerWindow.location.getDrawingScale();
+		var _font = new JavaFONT(headerElements['itemInfoName'].font);
+		var nameWidth = _font.getBounds(text, headerElements['itemInfoName'].x * drawScale, headerElements['itemInfoName'].y * drawScale, parseFloat(1.0)).width();
+		//alert(headerElements['itemInfoName'].x + " + " + nameWidth + " + " + 5 + " = " + (headerElements['itemInfoName'].x + nameWidth + 5));
+		headerElements['itemInfoFrame'].width = 50 + nameWidth + 10;
+		headerWindow.forceRefresh();
 	}
 	gridData.setItemInfoSlot = setItemInfoSlot;
 	elementsGUI_grid.clickFrameTouchEvents.push(function (element, event) {

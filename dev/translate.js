@@ -350,3 +350,4 @@ Translation.addTranslation("Open Wireless Crafting Monitor", {}); */
 Translation.addTranslation('Hey, new version is available, please, update', {ru:'Доступна новая версия, пожалуйста, обновитесь'});
 Translation.addTranslation('Information', {ru:'Информация'});
 Translation.addTranslation('Changelog', {ru:'Обновления'});
+Translation.addTranslation('Top donaters', {ru:'Топ донатеры'});

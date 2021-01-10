@@ -3,6 +3,8 @@ const WorkbenchRecipes = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.w
 const WorkbenchFieldAPI = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchFieldAPI');
 const zhekaCompiler = WRAP_JAVA('com.zhekasmirnov.innercore.mod.executable.Compiler');
 const ScriptableObjectHelper = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.ScriptableObjectHelper');
+const JavaFONT = WRAP_JAVA('com.zhekasmirnov.innercore.api.mod.ui.types.Font');
+const JavaRect = android.graphics.Rect;
 const _setTip = ModAPI.requireGlobal("MCSystem.setLoadingTip");
 var RSJava = WRAP_JAVA('com.bot12381.refined.Main');
 RSJava = new RSJava();
@@ -485,8 +487,8 @@ Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _block
 	var isOldBlock = RS_blocks.indexOf(oldBlock.id) != -1;
 	var isNewBlock = RS_blocks.indexOf(newBlock.id) != -1;
 	if(isNewBlock && newBlock.id != BlockID.RS_cable){
-		var _newTile = World.addTileEntity(coords.x, coords.y, coords.z, _blockSource);
-		if(newBlock.id == BlockID.RS_controller && newBlock.data == 3){
+		var _newTile = World.addTileEntity(coords.x, coords.y, coords.z, _blockSource) || World.getTileEntity(coords.x, coords.y, coords.z, _blockSource);
+		if(newBlock.id == BlockID.RS_controller && newBlock.data == 3 && _newTile){
 			_newTile.data.isCreative = true;
 			_newTile.data.energy = Config.controller.energyCapacity;
 		}
