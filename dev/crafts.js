@@ -180,4 +180,9 @@ Callback.addCallback("PreLoaded", function () {
 		"isi",
 		"iii"
 	], ['s', 1, 0, 'i', ItemID.quartz_enriched_iron, -1]);
+	Recipes.addShaped({id: BlockID['RS_interface'], count: 1, data: 0}, [
+		"ihi",
+		"rsr",
+		"ihi"
+	], ['s', BlockID['RSmachine_casing'], 0, 'i', ItemID.quartz_enriched_iron, -1, 'h', 410, -1, 'r', 331, -1]);//TODO: remake craft
 });
