@@ -462,9 +462,11 @@ const UpgradeRegistry = {
 
 var itemsNamesMap = {};
 
-const getItemName = function(id, data){
-	if(!itemsNamesMap[id+','+data]) itemsNamesMap[id+','+data] = Item.getName(id, data);
-	return itemsNamesMap[id+','+data];
+const getItemName = function(id, data, extra){
+	var item = {id: id, data: data, extra: extra};
+	var itemUid = getItemUid(item);
+	if(!itemsNamesMap[itemUid]) itemsNamesMap[itemUid] = Item.getName(id, data, extra);
+	return itemsNamesMap[itemUid];
 }
 
 var RSNetworks = [];

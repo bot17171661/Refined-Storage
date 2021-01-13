@@ -223,7 +223,7 @@ grid_set_elements(360 + 109, 70, CgridConsPercents*(UI.getScreenHeight() - 60), 
 						if(!this.parent) return;
 						/* var item = container.getSlot(this.id);
 						if(item.id == 0) return;
-						alert(Item.getName(item.id, item.data)); */
+						alert(Item.getName(item.id, item.data, item.extra)); */
 						craftingGridData.setItemInfoSlot(this.parent, itemContainer);
 					},
 					onLongClick: function (itemContainerUiHandler, itemContainer, element) {
@@ -575,8 +575,8 @@ var craftingGridFuncs = {
 				return function (a, b) {
 					var slot1 = slots[a], slot2 = slots[b];
 					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
-					var name1 = getItemName(slot1.id, slot1.data);
-					var name2 = getItemName(slot2.id, slot2.data);
+					var name1 = getItemName(slot1.id, slot1.data, slot1.extra);
+					var name2 = getItemName(slot2.id, slot2.data, slot2.extra);
 					if (name1 > name2) {
 						return 1;
 					}
@@ -600,8 +600,8 @@ var craftingGridFuncs = {
 				return function (a, b) {
 					var slot1 = slots[a], slot2 = slots[b];
 					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
-					var name1 = getItemName(slot1.id, slot1.data);
-					var name2 = getItemName(slot2.id, slot2.data);
+					var name1 = getItemName(slot1.id, slot1.data, slot1.extra);
+					var name2 = getItemName(slot2.id, slot2.data, slot2.extra);
 					if (name2 > name1) {
 						return 1;
 					}
@@ -980,7 +980,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 							var textSearch = new RegExp(craftingGridData.textSearch, "i");
 							craftingGridData.slotsKeys = craftingGridData.slotsKeys.filter(function (value, index) {
 								var slot = container.slots[value];
-								if (getItemName(slot.id, slot.data).match(textSearch)) {
+								if (getItemName(slot.id, slot.data, slot.extra).match(textSearch)) {
 									return true;
 								}
 							})

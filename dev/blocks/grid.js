@@ -158,7 +158,7 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 		gridData.selectedItemInfoSlot = _item;
 		var item = container.getSlot(_item);
 		container.setSlot('itemInfoSlot', item.id, 1, item.data, item.extra);
-		var fullName = Item.getName(item.id, item.data).replace(/§./g, '');
+		var fullName = Item.getName(item.id, item.data, item.extra).replace(/§./g, '');
 		var splitedName = fullName.split('\n');
 		var text = (splitedName[0].length > 40 ? splitedName[0].substr(0, 40) + '...' : splitedName[0]) + ' (' + numberWithCommas(item.count) + ')';
 		container.setText('itemInfoName', text);
@@ -718,8 +718,8 @@ var gridFuncs = {
 				return function (a, b) {
 					var slot1 = slots[a], slot2 = slots[b];
 					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
-					var name1 = getItemName(slot1.id, slot1.data);
-					var name2 = getItemName(slot2.id, slot2.data);
+					var name1 = getItemName(slot1.id, slot1.data, slot1.extra);
+					var name2 = getItemName(slot2.id, slot2.data, slot2.extra);
 					if (name1 > name2) {
 						return 1;
 					}
@@ -743,8 +743,8 @@ var gridFuncs = {
 				return function (a, b) {
 					var slot1 = slots[a], slot2 = slots[b];
 					if(slot1.id == 0 || slot2.id == 0) return slot2.id - slot1.id;
-					var name1 = getItemName(slot1.id, slot1.data);
-					var name2 = getItemName(slot2.id, slot2.data);
+					var name1 = getItemName(slot1.id, slot1.data, slot1.extra);
+					var name2 = getItemName(slot2.id, slot2.data, slot2.extra);
 					if (name2 > name1) {
 						return 1;
 					}
@@ -1072,7 +1072,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 							var textSearch = new RegExp(gridData.textSearch, "i");
 							gridData.slotsKeys = gridData.slotsKeys.filter(function (value, index) {
 								var slot = container.slots[value];
-								if (getItemName(slot.id, slot.data).match(textSearch)) {
+								if (getItemName(slot.id, slot.data, slot.extra).match(textSearch)) {
 									return true;
 								}
 							})

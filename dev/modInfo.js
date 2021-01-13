@@ -282,7 +282,7 @@
             type: "text",
             x: 0,
             y: 0,
-            text: Translation.translate('Original'),
+            text: 'Original',
             z: 10,
             clicker: {
                 onClick: function(){
@@ -303,12 +303,33 @@
             type: "text",
             x: 0,
             y: 0,
-            text: Translation.translate('DonationAlerts'),
+            text: 'DonationAlerts',
             z: 10,
             clicker: {
                 onClick: function(){
                     var openURL = Intent(android.content.Intent.ACTION_VIEW);
                     openURL.data = Uri.parse("https://www.donationalerts.com/r/bot1023123123123");
+                    UI.getContext().startActivity(openURL);
+                }
+            },
+            font: {
+                color: android.graphics.Color.argb(255, 70, 70, 255),
+                bold: true,
+                underline: true,
+                size: 20/562.5*UI.getScreenHeight(),
+                shadow: 0
+            }
+        },
+        'modLink3': {
+            type: "text",
+            x: 0,
+            y: 0,
+            text: 'GitHub',
+            z: 10,
+            clicker: {
+                onClick: function(){
+                    var openURL = Intent(android.content.Intent.ACTION_VIEW);
+                    openURL.data = Uri.parse("https://github.com/bot17171661/Refined-Storage");
                     UI.getContext().startActivity(openURL);
                 }
             },
@@ -349,18 +370,21 @@
     thisWindows["info"].forceRefresh();
 
     var firstOpen = true;
-    var textsArray = ['modLinks', 'modLink1', 'modLink2'];
+    var textsArray = ['modLinks', 'modLink1', 'modLink2', 'modLink3'];
     var textsPadding = 15;
     thisWindows["info"].setEventListener({
         onOpen: function(window12){
             if(!firstOpen) return;
             firstOpen = false;
             for(var i = 0; i <= textsArray.length; i++){
-                var elementIns = window12.getElements().get(textsArray[i]);
+                /* var elementIns = window12.getElements().get(textsArray[i]);
                 var clazz = elementIns.getClass();
                 var field = clazz.getDeclaredField("textBounds");
                 field.setAccessible(true);
-                var value = field.get(elementIns).width();
+                var value = field.get(elementIns).width(); */
+                var drawScale = window12.location.getDrawingScale();
+                var _font = new JavaFONT(infoElements[textsArray[i]].font);
+                var value = _font.getBounds(infoElements[textsArray[i]].text, infoElements[textsArray[i]].x * drawScale, infoElements[textsArray[i]].y * drawScale, parseFloat(1.0)).width();
                 infoElements[textsArray[i]].textWidth = value;
                 if(i == 0) continue;
                 infoElements[textsArray[i]].x = infoElements[textsArray[i - 1]].x + infoElements[textsArray[i - 1]].textWidth + textsPadding;
@@ -643,6 +667,8 @@
         }
         changelogElements["frame" + _id].height += (descrText.split('\n').length - 1) * (changelogElements["descriptionText" + _id].font.size*1.1 + 2);
         changelogElements.last = _id;
+        thisWindows["changelog"].location.setScroll(0, thisWindows["changelog"].location.windowToGlobal(_y + changelogElements["frame" + _id].height));
+        if(thisWindows["changelog"].isOpened())thisWindows["changelog"].updateWindowLocation();
         return true;
     }
 

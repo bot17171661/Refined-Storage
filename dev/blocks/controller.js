@@ -114,7 +114,7 @@ var controllerSwitchPage = function(num, container, data, ignore){
 			var item = aray_net_map[i] ? data.net_map[aray_net_map[i]] : {};
 			var _id = item.id ? Network.serverToLocalId(item.id) : 0;
 			container.setSlot("slot" + a, _id, 1, item.data || 0, item.extra || null);
-			var name = item.id ? Item.getName(_id, item.data || 0).split('\n')[0] : '';
+			var name = item.id ? Item.getName(_id, item.data || 0, item.extra).split('\n')[0] : '';
 			if(name.length > controller_other_data['max_sym']) name = name.substr(0, controller_other_data['max_sym'] - 1) + '...';
 			container.setText('block_info' + a, name);
 			container.setText('block_count' + a, _id ? item.count + 'x' : '');
@@ -630,7 +630,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							}
 						}
 					} else {
-						//if(!item.name)item.name = Item.getName(item.id, item.data);
+						//if(!item.name)item.name = Item.getName(item.id, item.data, item.extra);
 						this.items.push({
 							id: item.id,
 							data: item.data,
@@ -713,7 +713,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							}
 						}
 					} else {
-						//if(!item.name)item.name = Item.getName(item.id, item.data);
+						//if(!item.name)item.name = Item.getName(item.id, item.data, item.extra);
 						this.items.push({
 							id: item.id,
 							data: item.data,
@@ -736,7 +736,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							}
 						}
 					}
-					//if(!item.name)item.name = Item.getName(item.id, item.data);
+					//if(!item.name)item.name = Item.getName(item.id, item.data, item.extra);
 					//this.stored += count1;
 					for(var i in this.disk_map){
 						for(var k in this.disk_map[i]){
