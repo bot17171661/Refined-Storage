@@ -571,7 +571,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 									items.push(Object.assign({}, diskItem));
 									items_map.push(itemUid);
 								}
-								if(just_items_map[diskItem.id] && just_items_map[diskItem.id].indexOf(diskItem.data) == -1){
+								if(just_items_map[diskItem.id]){
 									just_items_map[diskItem.id].push(diskItem.data);
 								} else if(!just_items_map[diskItem.id]){
 									just_items_map[diskItem.id] = [diskItem.data];
@@ -722,7 +722,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							name: item.name */
 						});
 						this.items_map.push(itemUid);
-						if(this.just_items_map[item.id] && this.just_items_map[item.id].indexOf(item.data) == -1){
+						if(this.just_items_map[item.id]){
 							this.just_items_map[item.id].push(item.data);
 						} else if(!this.just_items_map[item.id]){
 							this.just_items_map[item.id] = [item.data];
@@ -780,7 +780,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 					count = count || item.count;
 					if(count > this.stored) return false;
 					var itemUid = getItemUid(item);
-					if((iItem = this.items_map.indexOf(itemUid)) != -1 && this.items[iItem].count >= count){
+					if((iItem = this.items_map.indexOf(itemUid)) != -1){
 						return true;
 					} else {
 						return false;
@@ -788,7 +788,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				},
 				deleteItem: function(item, count, nonUpdate){
 					count = count || item.count;
-					if(this.stored == 0 || !this.just_items_map[item.id]) return count;
+					if(!this.itemCanBeDeleted(item, count)) return count;
 					if((!item.data && item.data != 0) || item.data == -1) item.data = this.just_items_map[item.id][0];
 					if(item.extra === undefined)item.extra = null;
 					if((!item.extra && item.extra != null) || item.extra == -1) item.extra = this.just_items_map_extra[item.id+'_'+item.data][0] || null;
@@ -851,7 +851,8 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 							return count;
 						}
 					} else {
-						alert('Hey are you doing something wrong');
+						//alert('Hey are you doing something wrong');
+						return count;
 					}
 					if(!nonUpdate)this.refreshOpenedGrids();
 				}

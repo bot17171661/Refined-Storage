@@ -60,6 +60,7 @@ GUIs.push(craftingGridGUI);
 
 function craftingGridSwitchPage(page, container, ignore, dontMoveSlider){
 	if(Config.dev)Logger.Log('Switch crafting grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
+	if(!container.getUiAdapter().getWindow().isOpened) return false;
 	var slots = container.slots;
 	var slotsKeys = craftingGridData.slotsKeys;
 	var slots_count = craftingGridData.slots_count;
@@ -97,6 +98,7 @@ function craftingGridSwitchCraftsPage(page, container, ignore, dontMoveSlider){
 	//var asd1 = Object.assign(craftingGridData);
 	//delete asd1.networkData;
 	if(Config.dev)Logger.Log('Switch Crafts Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
+	if(!container.getUiAdapter().getWindow().isOpened) return false;
 	var slotsKeys = craftingGridData.crafts;
 	var slots_count = craftingGridData.crafts_slots_count;
 	var x_count = craftingGridData.crafts_x_count;
@@ -166,7 +168,6 @@ grid_set_elements(360 + 109, 70, CgridConsPercents*(UI.getScreenHeight() - 60), 
 		clicker: {
 			onClick: function (itemContainerUiHandler, itemContainer, element) {
 				if(!craftingGridData.selectedRecipe || !craftingGridData.selectedRecipe.craftable) return;
-				//alert(JSON.stringify(Object.assign(Object.assign({}, craftingGridData.selectedRecipe), {javaRecipe: null})));
 				craftingGridFuncs.provideCraft(craftingGridData.selectedRecipe.result.count);
 			},
 			onLongClick: function (itemContainerUiHandler, itemContainer, element) {
@@ -221,9 +222,6 @@ grid_set_elements(360 + 109, 70, CgridConsPercents*(UI.getScreenHeight() - 60), 
 				clicker: {
 					onClick: function (itemContainerUiHandler, itemContainer, element) {
 						if(!this.parent) return;
-						/* var item = container.getSlot(this.id);
-						if(item.id == 0) return;
-						alert(Item.getName(item.id, item.data, item.extra)); */
 						craftingGridData.setItemInfoSlot(this.parent, itemContainer);
 					},
 					onLongClick: function (itemContainerUiHandler, itemContainer, element) {
@@ -637,7 +635,7 @@ var craftingGridFuncs = {
 			else
 				inventoryOnlyItemsMap[inventoryItems[i].id] = [inventoryItems[i].data];
 		}
-		var sorted = ScriptableObjectHelper.createArray(RSJava.sortCrafts(items, craftsTextSearch ? craftsTextSearch : "-1nullfalse", Object.assign(inventoryOnlyItemsMap, onlyItemsMap), _object, inventoryItems, craftingGridData.isDarkenMap));
+		var sorted = ScriptableObjectHelper.createArray(RSJava.sortCrafts(items, craftsTextSearch ? craftsTextSearch : null, Object.assign(inventoryOnlyItemsMap, onlyItemsMap), _object, inventoryItems, craftingGridData.isDarkenMap));
 		if(Config.dev)Logger.Log('Crafts array sorted on: ' + (java.lang.System.currentTimeMillis() - millis), "RefinedStorageDebug");
 		return sorted;
 	},
@@ -656,13 +654,10 @@ var craftingGridFuncs = {
 		var smallItemsMap = {};
 		var fixedItemsMap = {};
 		var craftable = true;
-		var craftSlotsItems = [];
 		for(i = 0; i < 9; i++){
 			if(!items[i] || !items[i].id){
 				container.setSlot('craft_slot' + i, 0, 0, 0);
 				_elementsGUI_craftingGrid['craft_slot' + i].parent = null;
-				craftSlotsItems.push({id: 0, count: 0, data: 0, extra: null});
-				//container.setSlot('WB_craft_slot' + i, 0, 0, 0);
 				continue;
 			};
 			var item = items[i];
@@ -674,9 +669,9 @@ var craftingGridFuncs = {
 				smallItemsMap[itemUid]++;
 			else
 				smallItemsMap[itemUid] = 1;
-			itemCount = ((itemI = originalItemsMap.indexOf(itemUid)) != -1 && container.getSlot(craftingGridData.slotsKeys[itemI]).count >= smallItemsMap[itemUid]) ? 1 : 0;
+			var itemCount = ((itemI = originalItemsMap.indexOf(itemUid)) != -1 && container.getSlot(craftingGridData.slotsKeys[itemI]).count >= smallItemsMap[itemUid]) ? 1 : 0;
 			if(!itemCount) {
-				var playerItem = searchItem(item.id, item.data, itemExtra);
+				var playerItem = searchItem(item.id, itemData, itemExtra);
 				if(playerItem && playerItem.count >= smallItemsMap[itemUid] - (itemI != -1 ? container.getSlot(craftingGridData.slotsKeys[itemI]).count : 0)){
 					itemExtra = playerItem.extra;
 					itemCount = 1;
@@ -692,16 +687,14 @@ var craftingGridFuncs = {
 			}
 			container.setSlot('craft_slot' + i, item.id, itemCount, itemData, itemExtra);
 			_elementsGUI_craftingGrid['craft_slot' + i].parent = craftingGridData.slotsKeys[itemI];
-			craftSlotsItems.push({id: item.id, count: itemCount, data: itemData, extra: itemExtra});
-			//container.setSlot('WB_craft_slot' + i, item.id, itemCount, itemData, itemExtra);
 		}
 		craftingGridData.selectedRecipe = {
 			result: result_item,
-			items: smallItemsMap,
-			fixedItems: fixedItemsMap,
+			//items: smallItemsMap,
+			//fixedItems: fixedItemsMap,
 			javaRecipe: javaRecipe,
 			craftable: craftable,
-			craftSlotsItems: craftSlotsItems,
+			//craftSlotsItems: craftSlotsItems,
 			uid: javaRecipe.getRecipeUid()
 		}
 		//container.sendEvent('selectRecipe', {uid: javaRecipe.getRecipeUid()});
@@ -743,56 +736,55 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		var netFuncs = RSNetworks[this.data.NETWORK_ID].info;
 		var selectedRecipe = this.data.selectedRecipe;
 		var javaRecipe = selectedRecipe.javaRecipe;
-		var result = selectedRecipe.result;
-		var playerSlots = {};
-		for(var i in selectedRecipe.items){
-			var splited = i.split('_');
-			var itemExtra = splited[2] ? ItemExtraData(Number(splited[2])) : null;
-			var item = {id: Number(splited[0]), count: selectedRecipe.items[i], data: Number(splited[1]), extra: itemExtra};
-			if(!netFuncs.itemCanBeDeleted(item) && (!(playerSlots[i] = searchItem(item.id, item.data, item.extra, false, false, player)) || playerSlots[i].count < item.count)) return false;
+		var items = javaRecipe.getSortedEntries();
+		var smallItemsMap = {};
+		for(i = 0; i < 9; i++){
+			if(!items[i] || !items[i].id) {
+				this.container.setSlot('WB_craft_slot' + i, 0,0,0);
+				continue;
+			}
+			var item = items[i];
+			itemData = item.data != -1 ? item.data : ((originalItem = this.originalOnlyItemsMap()[item.id]) ? originalItem[0] : 0);
+			var itemUid = item.id+'_'+itemData;
+			var itemExtra = (itemExtraExist = this.originalOnlyItemsExtraMap()[itemUid]) ? itemExtraExist[0] : null;
+			if(itemExtra) {
+				itemUid += '_' + itemExtra.getValue();
+			}
+			if(smallItemsMap[itemUid])
+				smallItemsMap[itemUid].count++;
+			else
+				smallItemsMap[itemUid] = {id: item.id, count: 1, data: itemData, extra: itemExtra};
+			this.container.setSlot('WB_craft_slot' + i, item.id, 1, itemData, itemExtra);
 		}
-		var fieldApi = new WorkbenchFieldAPI(this.container);
-		Callback.invokeCallback("CraftRecipePreProvided", javaRecipe, this.container);
+		var playerSlots = {};
+		for(var i in smallItemsMap){
+			if(!netFuncs.itemCanBeDeleted(smallItemsMap[i]) && (!(playerSlots[i] = searchItem(smallItemsMap[i].id, smallItemsMap[i].data, smallItemsMap[i].extra, false, false, player)) || playerSlots[i].count < smallItemsMap[i].count)) return false;
+		}
+		var result = javaRecipe.provideRecipeForPlayer(this.container, player);
+		if(!result) return false;
+		if(result.data == -1)result.data = 0;
 		var fixedEntries = this.container.asScriptableField();
-		var cbk = javaRecipe.getCallback();
-		if(cbk)cbk.call(zhekaCompiler.assureContextForCurrentThread(), fieldApi, fixedEntries, result);
-		var cbkUsed = false;
+		var __PlayerActor = new PlayerActor(player);
+		for(var i in smallItemsMap){
+			var ndeleted = netFuncs.deleteItem(smallItemsMap[i], smallItemsMap[i].count, true);
+			if(ndeleted > 0 && (playerSlotData = playerSlots[i])){
+				__PlayerActor.setInventorySlot(playerSlotData.slot, playerSlotData.id, playerSlotData.count - ndeleted, playerSlotData.data, playerSlotData.extra);
+			}
+		};
 		var cbkUsedFunc = function(){
-			if(cbk && !cbkUsed){
-				cbkUsed = true;
-				for(var i in fixedEntries){
-					if(!fixedEntries[i]) continue;
-					if(fixedEntries[i].count != 0){
-						var answ = this.pushItem(fixedEntries[i], fixedEntries[i].count, true);
-						if(answ != 0){
-							Player.addItemToInventory(fixedEntries[i].id, answ, fixedEntries[i].data, null, false);
-						}
+			for(var i = 0; i < 9; i++){
+				var slot_ = fixedEntries[i];
+				if(slot_.count != 0){
+					var answ = this.pushItem(slot_, slot_.count, true);
+					if(answ != 0){
+						__PlayerActor.addItemToInventory(slot_.id, answ, slot_.data, null, true);
 					}
 				}
 			}
 		};
-		//var refreshRecipe = false;
-		for(var i in selectedRecipe.items){
-			var splited = i.split('_');
-			var itemExtra = splited[2] ? ItemExtraData(Number(splited[2])) : null;
-			var item = {id: Number(splited[0]), count: selectedRecipe.items[i], data: Number(splited[1]), extra: itemExtra};
-			var ndeleted = netFuncs.deleteItem(item, null, true);
-			if(ndeleted > 0 && (playerSlotData = playerSlots[i])){
-				var __PlayerActor = new PlayerActor(player);
-				__PlayerActor.setInventorySlot(playerSlotData.slot, playerSlotData.id, playerSlotData.count - ndeleted, playerSlotData.data, playerSlotData.extra);
-			}
-			//if(!netFuncs.itemCanBeDeleted(item))refreshRecipe = true;
-		};
-		/* if(refreshRecipe){
-			cbkUsedFunc.apply(this);
-			//this.post_items(true);
-			//this.selectRecipe(javaRecipe);
-		}; */
 		cbkUsedFunc.apply(this);
-		Callback.invokeCallback("CraftRecipeProvided", javaRecipe, this.container, fieldApi.isPrevented());
-		if(fieldApi.isPrevented()) return false;
 		Callback.invokeCallback("VanillaWorkbenchCraft", result, this.container);
-		Player.addItemToInventory(result.id, result.count, result.data == -1 ? 0 : result.data, result.extra || null);
+		__PlayerActor.addItemToInventory(result.id, result.count, result.data, result.extra);
 		Callback.invokeCallback("VanillaWorkbenchPostCraft", result, this.container);
 		return true;
 	},
@@ -834,16 +826,14 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 					delete this.data.pushDeleteEvents[p][i];
 				}
 				if(event.type == 'delete'){
-					var item = event.item;
+					var item = this.container.getSlot(i);//event.item;
 					var itemMaxStack = Item.getMaxStack(item.id);
 					var this_item = searchItem(item.id, item.data, false, true, p);
-					if(item){
-						var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
-						if((res = this.deleteItem(item, count, true)) < count) {
-							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
-							this.items();
-							this.refreshGui(false, false, item.count <= count || event.updateFull);
-						}
+					var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+					if((res = this.deleteItem(item, count, true)) < count) {
+						player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+						this.items();
+						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}
 					delete this.data.pushDeleteEvents[p][i];
 				}
@@ -972,26 +962,17 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 						craftingGridData.originalOnlyItemsExtraMap = originalOnlyItemsExtraMap;
 						craftingGridData.originalOnlyItemsMap = originalOnlyItemsMap;
 						craftingGridData.slotsKeys = _slotKeys;
-						//alert(craftingGridData.slotsKeys);
 						craftingGridData.crafts = [];
-						//if(Config.dev)Logger.Log('Pre items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
 						if(!refresh)craftingGridData.textSearch = false;
-						if(craftingGridData.textSearch){
-							var textSearch = new RegExp(craftingGridData.textSearch, "i");
-							craftingGridData.slotsKeys = craftingGridData.slotsKeys.filter(function (value, index) {
-								var slot = container.slots[value];
-								if (getItemName(slot.id, slot.data, slot.extra).match(textSearch)) {
-									return true;
-								}
-							})
-						};
-						craftingGridData.slotsKeys.sort(craftingGridFuncs.sort(eventData.sort, eventData.reverse_filter, container.slots));
+						var millis = 0;
+						if(Config.dev)millis = java.lang.System.currentTimeMillis();
+						craftingGridData.slotsKeys = ScriptableObjectHelper.createArray(RSJava.sortItems(eventData.sort, eventData.reverse_filter, craftingGridData.textSearch ? craftingGridData.textSearch : null, container, craftingGridData.slotsKeys));
+						if(Config.dev)Logger.Log('Items array sorted on: ' + (java.lang.System.currentTimeMillis() - millis), "RefinedStorageDebug");
 						var originalItemsMap = craftingGridData.slotsKeys.map(function(__slot) {
 							return getItemUid(container.slots[__slot]);
 						});
 						craftingGridData.originalItemsMap = originalItemsMap;
 						if(craftingGridData.selectedItemInfoSlot)craftingGridData.setItemInfoSlot(craftingGridData.selectedItemInfoSlot, container);
-						//if(Config.dev)Logger.Log('Post items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
 					}
 					content.elements["image_filter"].bitmap = 'RS_filter' + (eventData.sort + 1);
 					content.elements["image_filter"].x = content.elements["filter_button"].x + (content.elements["filter_button"].scale * 20 - filter_size_map[eventData.sort]) / 2;
@@ -1084,10 +1065,10 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 			this.data.selectedRecipe = eventData;
 			this.data.selectedRecipe.javaRecipe = Recipes.getRecipeByUid(eventData.uid);
 			this.data.selectedRecipe.result = this.data.selectedRecipe.javaRecipe.getResult();
-			for(var i in eventData.craftSlotsItems){
+			/* for(var i in eventData.craftSlotsItems){
 				var item = eventData.craftSlotsItems[i];
 				this.container.setSlot('WB_craft_slot' + i, item.id, item.count, item.data, item.extra);
-			}
+			} */
 			var result = this.data.selectedRecipe.result;
 			for(var count = 0; count < eventData.count; count += result.count){
 				if(!this.provideCraft(connectedClient.getPlayerUid())) break;
@@ -1099,9 +1080,9 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 	},
 	events: {
 		pushDeleteEvents: function(packetData, packetExtra, connectedClient) {
-			for(var i in packetData.pushDeleteEvents){
+			/* for(var i in packetData.pushDeleteEvents){
 				if(packetData.pushDeleteEvents[i].type == 'delete')packetData.pushDeleteEvents[i].item = this.container.getSlot(i).asScriptable();
-			}
+			} */
 			this.data.pushDeleteEvents[connectedClient.getPlayerUid()] = packetData.pushDeleteEvents;
 			if(Config.dev)Logger.Log('Getted pushDeleteEvents from: ' + connectedClient.getPlayerUid() + '(' + Entity.getNameTag(connectedClient.getPlayerUid()) + ') : ' + JSON.stringify(packetData.pushDeleteEvents), 'RefinedStorageDebug');
 		}

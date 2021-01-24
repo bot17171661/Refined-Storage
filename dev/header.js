@@ -10,7 +10,7 @@ var RSJava = WRAP_JAVA('com.bot12381.refined.Main');
 RSJava = new RSJava();
 
 
-Callback.addCallback('PostLoaded', function(){
+//Callback.addCallback('LevelLoaded', function(){
 	/* var hashSet = new java.util.HashSet();
 	WorkbenchRecipes.addRecipesThatContainItem(5, 0, hashSet);
 	var it = hashSet.iterator();
@@ -23,7 +23,7 @@ Callback.addCallback('PostLoaded', function(){
 	var items = {};
 	var itemsMap = [];
 	var onlyItemsMap = {};
-	for(var i = 100; i >= 1; i--){
+	for(var i = 1000; i >= 1; i--){
 		var uid = i + '_0';
 		items[uid] = {id: i, data: 0, count: 50, extra: null};
 		itemsMap.push(uid);
@@ -41,8 +41,19 @@ Callback.addCallback('PostLoaded', function(){
 	RSJava.sortItems(0, false, container, itemsMap);
 	alert('Array sorted on: ' + (java.lang.System.currentTimeMillis() - millis));
 	alert(ScriptableObjectHelper.createArray(itemsMap)); */
-
-})
+	/* alert(itemsMap.map(function(value){
+		var item_ = container.getSlot(value);
+		return Item.getName(item_.id, item_.data);
+	}));
+	var millis = java.lang.System.currentTimeMillis();
+	var sorted = RSJava.sortItems(0, false, 'a', container, itemsMap);
+	alert('Array sorted on: ' + (java.lang.System.currentTimeMillis() - millis));
+	var array = ScriptableObjectHelper.createArray(sorted);
+	alert(array.map(function(value){
+		var item_ = container.getSlot(value);
+		return Item.getName(item_.id, item_.data);
+	})); */
+//})
 
 IMPORT("EnergyNet");
 IMPORT("StorageInterface");
@@ -159,7 +170,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			} else if (isRsBlock) {
 				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, blockSource_) || World.addTileEntity(coordss.x, coordss.y, coordss.z, blockSource_);
 				if (tile) {
-					if(net_id == 'f' && !compareCoords(_coords, tile.data.controller_coords)) return;
+					if(net_id == 'f' && !compareCoords(_coords, tile.data.controller_coords || {})) return;
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
 					tile.update_network(net_id, _first || (_defaultActive != undefined));
 					if(_defaultActive)tile.setActive(_defaultActive);
@@ -292,6 +303,31 @@ function cutNumber(num){
 	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 ? num3.toFixed(1) : num3) + 'B' : ((num2 = (num/1000000))%1 ? num2.toFixed(1) : num2) + 'M') : ((num2 = (num/1000))%1 ? num2.toFixed(1) : num2) + 'K') : num;
 }
 
+var mineColorsMap = {
+	'0': android.graphics.Color.rgb(0, 0, 0),
+	'1': android.graphics.Color.rgb(0, 0, 170),
+	'2': android.graphics.Color.rgb(0, 170, 0),
+	'3': android.graphics.Color.rgb(0, 170, 170),
+	'4': android.graphics.Color.rgb(170, 0, 0),
+	'5': android.graphics.Color.rgb(170, 0, 170),
+	'6': android.graphics.Color.rgb(255, 170, 0),
+	'7': android.graphics.Color.rgb(170, 170, 170),
+	'8': android.graphics.Color.rgb(85, 85, 85),
+	'9': android.graphics.Color.rgb(85, 85, 255),
+	'a': android.graphics.Color.rgb(85, 255, 85),
+	'b': android.graphics.Color.rgb(85, 255, 255),
+	'c': android.graphics.Color.rgb(255, 85, 85),
+	'd': android.graphics.Color.rgb(255, 85, 255),
+	'e': android.graphics.Color.rgb(255, 255, 85),
+	'f': android.graphics.Color.rgb(255, 255, 255),
+	'g': android.graphics.Color.rgb(221, 214, 5)
+}
+function parseMineColor(symbol){
+	if(symbol[0] == '§') symbol = symbol[1];
+	var answ = mineColorsMap[symbol] || android.graphics.Color.WHITE;
+	return answ;
+}
+
 var DiskData = [false];
 Saver.addSavesScope("RSDiskData",
 	function read(scope){
@@ -373,7 +409,7 @@ const Disk = {
 		}
 		Item.registerNameOverrideFunction(ItemID[itemIDName], function (item, name) {
 			var disk_data = DiskData[item.data];
-			if(!disk_data) return name + "\n§7" + Translation.translate('Stored') + (storage != Infinity ? ': 0/' + storage : ': 0');
+			if(!disk_data) return '§b' + name + "\n§7" + Translation.translate('Stored') + (storage != Infinity ? ': 0/' + storage : ': 0');
 			name += "\n§7" + Translation.translate('Stored') + ': ' + disk_data.items_stored + (disk_data.storage != Infinity ? '/' + disk_data.storage : '');
 			return name;
 		});

@@ -3,7 +3,7 @@ Disk.register('1k Storage Disk', '1Kdisk', 1000);
 /* if(Config.dev)Item.registerUseFunction("storageDisk1000", function (coords, item) {
     if(item.data == 0) item.data = DiskData.length;
     disk_data = Disk.getDiskData(item);
-    for(var i = 1; i <= 500; i++){
+    for(var i = 1; i <= 50000; i++){
         var item1 = {id: i, data: 0, count: i, extra: null};
         disk_data.items[i + '_0'] = item1;
     }

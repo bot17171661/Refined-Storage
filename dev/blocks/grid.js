@@ -47,6 +47,7 @@ var gridData = {
 
 function gridSwitchPage(page, container, ignore, dontMoveSlider){
 	if(Config.dev)Logger.Log('Switch grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container, 'RefinedStorageDebug');
+	if(!container.getUiAdapter().getWindow().isOpened) return false;
 	var slots = container.slots;
 	var slotsKeys = gridData.slotsKeys;
 	var slots_count = gridData.slots_count;
@@ -154,20 +155,30 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 			size: 9
 		}
 	}
+	var _font = new JavaFONT(headerElements['itemInfoName'].font);
+	var _font2 = new JavaFONT(headerElements['itemInfoDescription'].font);
 	function setItemInfoSlot(_item, container){
 		gridData.selectedItemInfoSlot = _item;
 		var item = container.getSlot(_item);
 		container.setSlot('itemInfoSlot', item.id, 1, item.data, item.extra);
 		var fullName = Item.getName(item.id, item.data, item.extra).replace(/§./g, '');
 		var splitedName = fullName.split('\n');
+		//if(splitedName[0][0] == '§') headerElements['itemInfoName'].font.color = parseMineColor(splitedName[0][1]);
 		var text = (splitedName[0].length > 40 ? splitedName[0].substr(0, 40) + '...' : splitedName[0]) + ' (' + numberWithCommas(item.count) + ')';
+		if(Config.dev)splitedName.push('id: ' + item.id + '  data: ' + item.data);
 		container.setText('itemInfoName', text);
 		container.setText('itemInfoDescription', splitedName.slice(1).join('\n'));
+		var frameWidth = 0;
 		var drawScale = headerWindow.location.getDrawingScale();
-		var _font = new JavaFONT(headerElements['itemInfoName'].font);
 		var nameWidth = _font.getBounds(text, headerElements['itemInfoName'].x * drawScale, headerElements['itemInfoName'].y * drawScale, parseFloat(1.0)).width();
-		//alert(headerElements['itemInfoName'].x + " + " + nameWidth + " + " + 5 + " = " + (headerElements['itemInfoName'].x + nameWidth + 5));
-		headerElements['itemInfoFrame'].width = 50 + nameWidth + 10;
+		frameWidth = nameWidth;
+		var newSplitedName = splitedName.slice(1);
+		for(var i in newSplitedName){
+			var descrWidth = _font2.getBounds(newSplitedName[i], headerElements['itemInfoDescription'].x * drawScale, headerElements['itemInfoDescription'].y * drawScale, parseFloat(1.0)).width();
+			if(descrWidth > frameWidth) frameWidth = descrWidth;
+		}
+		//alert(headerElements['itemInfoName'].x + " + " + frameWidth + " + " + 5 + " = " + (headerElements['itemInfoName'].x + frameWidth + 5));
+		headerElements['itemInfoFrame'].width = 50 + frameWidth + 10;
 		headerWindow.forceRefresh();
 	}
 	gridData.setItemInfoSlot = setItemInfoSlot;
@@ -857,29 +868,17 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					if((_index = this.originalItemsMap().indexOf(getItemUid(item))) != -1)this.container.markSlotDirty(_index+'slot');
 					this.items();
 					this.refreshGui(false, false, item.count <= count || event.updateFull);
-					/* var iterator = this.container.getNetworkEntity().getClients().iterator();
-					while(iterator.hasNext()){
-						var _client = iterator.next();
-						if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-					} */
 					delete this.data.pushDeleteEvents[p][i];
 				}
 				if(event.type == 'delete'){
-					var item = event.item;
+					var item = this.container.getSlot(i);//event.item;
 					var itemMaxStack = Item.getMaxStack(item.id);
 					var this_item = searchItem(item.id, item.data, false, true, p);
-					if(item){
-						var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
-						if((res = this.deleteItem(item, count, true)) < count) {
-							player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
-							this.items();
-							this.refreshGui(false, false, item.count <= count || event.updateFull);
-							/* var iterator = this.container.getNetworkEntity().getClients().iterator();
-							while(iterator.hasNext()){
-								var _client = iterator.next();
-								if(_client.getPlayerUid() != p)this.refreshGui(false, _client, item.count <= count || event.updateFull);
-							} */
-						}
+					var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+					if((res = this.deleteItem(item, count, true)) < count) {
+						player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+						this.items();
+						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}
 					delete this.data.pushDeleteEvents[p][i];
 				}
@@ -906,7 +905,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 			return 1;
 		}
 	},
-	items: function () {
+	items: function (forced) {
 		if (!this.isWorkAllowed()) {
 			return [];
 		}
@@ -915,7 +914,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		for(var i = 0; i < Math.max(slotsKeys.length, items.length); i++){
 			var slot = this.container.getSlot(i+'slot');
 			var slot2 = items[i] || {id:0, data:0, count:0, extra: null};
-			if(!compareSlots(slot, slot2)){
+			if(forced || !compareSlots(slot, slot2)){
 				this.container.setSlot(i+'slot', slot2.id, slot2.count, slot2.data, slot2.extra || null);
 			}
 		}
@@ -1064,22 +1063,13 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					if(updateFilters){
 						var _slotKeys = [];
 						for(var i in container.slots)if(i[0] >= 0 && container.slots[i].id != 0)_slotKeys.push(i);
-						gridData.slotsKeys = _slotKeys;//Object.keys(container.slots).splice(0, eventData.slotsLength);
-						//alert(gridData.slotsKeys);
-						//if(Config.dev)Logger.Log('Pre items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
+						gridData.slotsKeys = _slotKeys;
 						if(!refresh)gridData.textSearch = false;
-						if(gridData.textSearch){
-							var textSearch = new RegExp(gridData.textSearch, "i");
-							gridData.slotsKeys = gridData.slotsKeys.filter(function (value, index) {
-								var slot = container.slots[value];
-								if (getItemName(slot.id, slot.data, slot.extra).match(textSearch)) {
-									return true;
-								}
-							})
-						};
-						gridData.slotsKeys.sort(gridFuncs.sort(eventData.sort, eventData.reverse_filter, container.slots));
+						var millis = 0;
+						if(Config.dev)millis = java.lang.System.currentTimeMillis();
+						gridData.slotsKeys = ScriptableObjectHelper.createArray(RSJava.sortItems(eventData.sort, eventData.reverse_filter, gridData.textSearch ? gridData.textSearch : null, container, gridData.slotsKeys));
+						if(Config.dev)Logger.Log('Items array sorted on: ' + (java.lang.System.currentTimeMillis() - millis), "RefinedStorageDebug");
 						if(gridData.selectedItemInfoSlot)gridData.setItemInfoSlot(gridData.selectedItemInfoSlot, container);
-						//if(Config.dev)Logger.Log('Post items: ' + _slotKeys.map(function(value){return JSON.stringify(container.slots[value].asScriptable())}), 'RefinedStorageDebug');
 					}
 					content.elements["image_filter"].bitmap = 'RS_filter' + (eventData.sort + 1);
 					content.elements["image_filter"].x = content.elements["filter_button"].x + (content.elements["filter_button"].scale * 20 - filter_size_map[eventData.sort]) / 2;
@@ -1137,9 +1127,9 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 	},
 	events: {
 		pushDeleteEvents: function(packetData, packetExtra, connectedClient) {
-			for(var i in packetData.pushDeleteEvents){
+			/* for(var i in packetData.pushDeleteEvents){
 				if(packetData.pushDeleteEvents[i].type == 'delete')packetData.pushDeleteEvents[i].item = this.container.getSlot(i).asScriptable();
-			}
+			} */
 			this.data.pushDeleteEvents[connectedClient.getPlayerUid()] = packetData.pushDeleteEvents;
 			if(Config.dev)Logger.Log('Getted pushDeleteEvents from: ' + connectedClient.getPlayerUid() + '(' + Entity.getNameTag(connectedClient.getPlayerUid()) + ') : ' + JSON.stringify(packetData.pushDeleteEvents), 'RefinedStorageDebug');
 		}

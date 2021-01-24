@@ -24,11 +24,25 @@ import java.lang.CharSequence;
 import java.util.Comparator;
 import com.zhekasmirnov.apparatus.api.container.ItemContainerSlot;
 import java.util.Arrays;
+import java.lang.Error;
+import org.mozilla.javascript.MembersPatch;
+import com.zhekasmirnov.innercore.api.mod.adaptedscript.AdaptedScriptAPI.IDRegistry;
+import com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchFieldAPI;
 //import org.mozilla.javascript.NativeArray;
 
 public class Main {
     public static void boot(HashMap data) {
-        Logger.debug("Refined Storage", "Loading java side...");
+        Logger.debug("Refined Storage", "Loading java side...");//genBlockID genItemID
+        MembersPatch.addOverride("com.zhekasmirnov.innercore.api.mod.adaptedscript.AdaptedScriptAPI.IDRegistry.genBlockID", "com.bot12381.refined.Main.genBlockID");
+        MembersPatch.addOverride("com.zhekasmirnov.innercore.api.mod.adaptedscript.AdaptedScriptAPI.IDRegistry.genItemID", "com.bot12381.refined.Main.genItemID");
+    }
+    public static int genBlockID(String name){
+        Logger.debug("RefinedStorageDebug", "Generating block id: " + name);
+        return IDRegistry.genBlockID(name);
+    }
+    public static int genItemID(String name){
+        Logger.debug("RefinedStorageDebug", "Generating item id: " + name);
+        return IDRegistry.genBlockID(name);
     }
     public Main(){
 
@@ -64,7 +78,7 @@ public class Main {
         Iterator<WorkbenchRecipe> it = hashSet.iterator();
         while (it.hasNext()) {
             WorkbenchRecipe jRecipe = it.next();
-            if(!textSearch.equals("-1nullfalse")) {
+            if(textSearch != null) {
                 ItemInstance result = jRecipe.getResult();
                 String name = NativeItem.getNameForId(result.getId(), result.getData() != -1 ? result.getData() : 0);
                 if(name.toLowerCase().indexOf(textSearch.toLowerCase()) == -1) continue;
@@ -93,16 +107,80 @@ public class Main {
         }
 		return false;
     }
-    public void sortItems(int sortType, boolean isReverse, ItemContainer container, List<ConsString> array){
-        /* Comparator<ConsString> comparator = new Comparator<ConsString>(){
-            public int compare(ConsString o1, ConsString o2) {
-                int x = container.getSlot(o1.toString()).getId();
-                int y = container.getSlot(o2.toString()).getId();
-                Logger.debug("Refined Storage", "Comparing " + x + " : " + y);
-                //return container.getSlot(o1.toString()).getId() - container.getSlot(o2.toString()).getId();
-                return (x < y) ? -1 : ((x == y) ? 0 : 1);
+    public Object[] sortItems(int sortType, boolean isReverse, String textSearch, ItemContainer container, List<Object> array){
+        Object[] newArray;
+        if(textSearch != null){
+            ArrayList<Object> newArray2 = new ArrayList<Object>();
+            for(int i = 0; i < array.size(); i++){
+                ItemContainerSlot slot = container.getSlot(array.get(i).toString());
+                String name = Item.getName(slot.getId(), slot.getData(), slot.getExtra());
+                if(name.toLowerCase().indexOf(textSearch.toLowerCase()) != -1) newArray2.add(array.get(i));
+            }
+            newArray = newArray2.toArray();
+        } else {
+            newArray = array.toArray();
+        }
+        Comparator<Object> comparator = new Comparator<Object>(){
+            public int compare(Object a, Object b) {
+                return 0;
             }
         };
-        array.sort(comparator); */
+        if (isReverse) {
+            if (sortType == 2) { 
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        return container.getSlot(b.toString()).getId() - container.getSlot(a.toString()).getId();
+                    }
+                };
+            } else if (sortType == 0) {
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        ItemContainerSlot slot1 = container.getSlot(a.toString());
+                        ItemContainerSlot slot2 = container.getSlot(b.toString());
+                        return slot1.getCount() == 0 || slot2.getCount() == 0 ? slot2.getCount() - slot1.getCount() : slot1.getCount() - slot2.getCount();
+                    }
+                };
+            } else if (sortType == 1) {
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        ItemContainerSlot slot1 = container.getSlot(a.toString());
+                        ItemContainerSlot slot2 = container.getSlot(b.toString());
+                        if(slot1.getId() == 0 || slot2.getId() == 0) return slot2.getId() - slot1.getId();
+                        String name1 = Item.getName(slot1.getId(), slot1.getData(), slot1.getExtra());
+                        String name2 = Item.getName(slot2.getId(), slot2.getData(), slot2.getExtra());
+                        return name2.compareToIgnoreCase(name1);
+                    }
+                };
+            }
+        } else {
+            if (sortType == 2) {
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        ItemContainerSlot slot1 = container.getSlot(a.toString());
+                        ItemContainerSlot slot2 = container.getSlot(b.toString());
+                        return slot1.getId() == 0 || slot2.getId() == 0 ? slot2.getId() - slot1.getId() : slot1.getId() - slot2.getId();
+                    }
+                };
+            } else if (sortType == 0) {
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        return container.getSlot(b.toString()).getCount() - container.getSlot(a.toString()).getCount();
+                    }
+                };
+            } else if (sortType == 1) {
+                comparator = new Comparator<Object>(){
+                    public int compare(Object a, Object b) {
+                        ItemContainerSlot slot1 = container.getSlot(a.toString());
+                        ItemContainerSlot slot2 = container.getSlot(b.toString());
+                        if(slot1.getId() == 0 || slot2.getId() == 0) return slot2.getId() - slot1.getId();
+                        String name1 = Item.getName(slot1.getId(), slot1.getData(), slot1.getExtra());
+                        String name2 = Item.getName(slot2.getId(), slot2.getData(), slot2.getExtra());
+                        return name1.compareToIgnoreCase(name2);
+                    }
+                };
+            }
+        }
+        Arrays.sort(newArray, comparator);
+        return newArray;
     }
 }
