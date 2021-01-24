@@ -32,17 +32,7 @@ import com.zhekasmirnov.innercore.api.mod.recipes.workbench.WorkbenchFieldAPI;
 
 public class Main {
     public static void boot(HashMap data) {
-        Logger.debug("Refined Storage", "Loading java side...");//genBlockID genItemID
-        MembersPatch.addOverride("com.zhekasmirnov.innercore.api.mod.adaptedscript.AdaptedScriptAPI.IDRegistry.genBlockID", "com.bot12381.refined.Main.genBlockID");
-        MembersPatch.addOverride("com.zhekasmirnov.innercore.api.mod.adaptedscript.AdaptedScriptAPI.IDRegistry.genItemID", "com.bot12381.refined.Main.genItemID");
-    }
-    public static int genBlockID(String name){
-        Logger.debug("RefinedStorageDebug", "Generating block id: " + name);
-        return IDRegistry.genBlockID(name);
-    }
-    public static int genItemID(String name){
-        Logger.debug("RefinedStorageDebug", "Generating item id: " + name);
-        return IDRegistry.genBlockID(name);
+        Logger.debug("Refined Storage", "Loading java side...");
     }
     public Main(){
 
