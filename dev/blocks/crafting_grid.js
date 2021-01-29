@@ -60,7 +60,7 @@ GUIs.push(craftingGridGUI);
 
 function craftingGridSwitchPage(page, container, ignore, dontMoveSlider){
 	if(Config.dev)Logger.Log('Switch crafting grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
-	if(!container.getUiAdapter().getWindow().isOpened) return false;
+	if(!container.getUiAdapter() || container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
 	var slots = container.slots;
 	var slotsKeys = craftingGridData.slotsKeys;
 	var slots_count = craftingGridData.slots_count;
@@ -98,7 +98,7 @@ function craftingGridSwitchCraftsPage(page, container, ignore, dontMoveSlider){
 	//var asd1 = Object.assign(craftingGridData);
 	//delete asd1.networkData;
 	if(Config.dev)Logger.Log('Switch Crafts Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
-	if(!container.getUiAdapter().getWindow().isOpened) return false;
+	if(!container.getUiAdapter() || !container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
 	var slotsKeys = craftingGridData.crafts;
 	var slots_count = craftingGridData.crafts_slots_count;
 	var x_count = craftingGridData.crafts_x_count;
@@ -212,13 +212,13 @@ grid_set_elements(360 + 109, 70, CgridConsPercents*(UI.getScreenHeight() - 60), 
 	}
 
 	var asd = 0;
-	for(var y = craftingY; y < craftingY + craftSlotsSize*3; y += craftSlotsSize){
-		for(var x = 245 + craftingPadding; x < 245 + craftingPadding + craftSlotsSize*3; x += craftSlotsSize){
+	for(var y = 0; y < 3; y += 1){
+		for(var x = 0; x < 3; x += 1){
 			_elementsGUI_craftingGrid['craft_slot' + asd] = {
 				id: 'craft_slot' + asd,
 				type: "slot",
-				x: x,
-				y: y,
+				x: 245 + craftingPadding + craftSlotsSize*x,
+				y: craftingY + craftSlotsSize*y,
 				clicker: {
 					onClick: function (itemContainerUiHandler, itemContainer, element) {
 						if(!this.parent) return;
@@ -233,6 +233,8 @@ grid_set_elements(360 + 109, 70, CgridConsPercents*(UI.getScreenHeight() - 60), 
 			asd++;
 		}
 	}
+	x = 245 + craftingPadding + craftSlotsSize*3;
+	y = craftingY + craftSlotsSize*3;
 	var craftSlotsEnd = y;
 
 	var craftsSlotsXSettings = {
@@ -453,12 +455,14 @@ craftsInv_elements.elements["_CLICKFRAME_"] = {
 			} else {
 				var count = Math.min(Item.getMaxStack(item.id), craftingGridData.disksStorage - craftingGridData.disksStored, item.count);
 			}
-			if(Config.dev)Logger.Log('Grid local pushing item: ' + JSON.stringify(item) + ' ; count: ' + count + ' ; slot: ' + slot_id, 'RefinedStorageDebug');
+			if(Config.dev)Logger.Log('Grid local pushing item: ' + getItemUid(item) + ' ; count: ' + count + ' ; slot: ' + slot_id + " ; extra: " + fullExtraToString(item.extra), 'RefinedStorageDebug');
 			var slotFounded = false;
 			for(var i in craftingGridData.slotsKeys){
 				var _slotName = craftingGridData.slotsKeys[i];
 				var _slot = itemContainer.slots[_slotName];
-				if(_slot && (_slot.id == 0 || (_slot.id == item.id && _slot.data == item.data && _slot.extra == item.extra))){
+				//if(Config.dev)Logger.Log('Checking item: ' + _slotName + " ; UID: " + getItemUid(_slot) + " ; extra: " + fullExtraToString(_slot.extra), 'RefinedStorageDebug');
+				if(_slot && (_slot.id == 0 || (_slot.id == item.id && _slot.data == item.data && (item.extra == _slot.extra || (item.extra && _slot.extra && fullExtraToString(item.extra) == fullExtraToString(_slot.extra)))))){
+					item.extra = _slot.extra;
 					if(Config.dev)Logger.Log('Founded slot: ' + _slotName + ' : ' + JSON.stringify(_slot.asScriptable()), 'RefinedStorageDebug');
 					slotFounded = true;
 					itemContainer.setSlot(_slotName, item.id, _slot.count + count, item.data, item.extra || null);
@@ -828,10 +832,10 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				if(event.type == 'delete'){
 					var item = this.container.getSlot(i);//event.item;
 					var itemMaxStack = Item.getMaxStack(item.id);
-					var this_item = searchItem(item.id, item.data, false, true, p);
-					var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+					var this_item = searchItem(item.id, item.data, item.extra, false, true, p);
+					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
-						player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+						player.addItemToInventory(item.id, count - res, item.data, (this_item ? this_item.extra : item.extra) || null, true);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}

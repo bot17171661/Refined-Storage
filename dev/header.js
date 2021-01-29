@@ -136,7 +136,8 @@ const searchController_net = function (net_id) {
 	}
 }
 
-function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _func) {
+function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _forced, _func) {
+	if(Config.dev)Logger.Log('Set net for blocks: coords: ' + cts(_coords) + ' ; net_id: ' + net_id + ' ; _self: ' + _self + ' ; _first: ' + _first + ' ; _defaultActive: ' + _defaultActive + ' ; _forced: ' + _forced, 'RefinedStorageDebug');
 	var blockSource_ = _coords.blockSource;
 	var outCoords = [];
 	outCoords.push(cts(_coords));
@@ -170,7 +171,7 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _fun
 			} else if (isRsBlock) {
 				var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, blockSource_) || World.addTileEntity(coordss.x, coordss.y, coordss.z, blockSource_);
 				if (tile) {
-					if(net_id == 'f' && !compareCoords(_coords, tile.data.controller_coords || {})) return;
+					if(!_forced && net_id == 'f' && !compareCoords(_coords, tile.data.controller_coords || {})) continue;
 					tile.data.controller_coords = {x: _coords.x, y: _coords.y, z: _coords.z};
 					tile.update_network(net_id, _first || (_defaultActive != undefined));
 					if(_defaultActive)tile.setActive(_defaultActive);
@@ -257,7 +258,7 @@ function set_is_active_for_blocks_net(net_id, _state, isController, _blockSource
 }
 
 function checkAndSetNetOnCoords(coords, update){
-	if(!(controllerCoords = searchController(coords, true)))set_net_for_blocks(coords, 'f', true);
+	if(!(controllerCoords = searchController(coords, true)))set_net_for_blocks(coords, 'f', true, false, undefined, true);
 	if(update && controllerCoords && (tile = coords.blockSource.getTileEntity(controllerCoords.x, controllerCoords.y, controllerCoords.z)))tile.updateControllerNetwork();
 }
 
@@ -326,6 +327,18 @@ function parseMineColor(symbol){
 	if(symbol[0] == '§') symbol = symbol[1];
 	var answ = mineColorsMap[symbol] || android.graphics.Color.WHITE;
 	return answ;
+}
+
+function fullExtraToString(extra, usenbt){
+	if(!extra) return "";
+	var str = "";
+	if(jsonExtra = extra.asJson()){
+		if((_value = jsonExtra.opt('data')) && _value.length() == 0) jsonExtra.remove('data');
+		if((_value = jsonExtra.opt('name')) && _value.length() == 0) jsonExtra.remove('name');
+		str += jsonExtra.toString();
+	}
+	//if(usenbt && (tag__1 = extra.getCompoundTag()))str += JSON.stringify(tag__1.toScriptable());
+	return str;
 }
 
 var DiskData = [false];

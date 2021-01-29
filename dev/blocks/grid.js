@@ -47,7 +47,7 @@ var gridData = {
 
 function gridSwitchPage(page, container, ignore, dontMoveSlider){
 	if(Config.dev)Logger.Log('Switch grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container, 'RefinedStorageDebug');
-	if(!container.getUiAdapter().getWindow().isOpened) return false;
+	if(!container.getUiAdapter() || !container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
 	var slots = container.slots;
 	var slotsKeys = gridData.slotsKeys;
 	var slots_count = gridData.slots_count;
@@ -637,12 +637,14 @@ inv_elements.elements["_CLICKFRAME_"] = {
 			} else {
 				var count = Math.min(Item.getMaxStack(item.id), gridData.disksStorage - gridData.disksStored, item.count);
 			}
-			if(Config.dev)Logger.Log('Grid local pushing item: ' + JSON.stringify(item) + ' ; count: ' + count + ' ; slot: ' + slot_id, 'RefinedStorageDebug');
+			if(Config.dev)Logger.Log('Grid local pushing item: ' + getItemUid(item) + ' ; count: ' + count + ' ; slot: ' + slot_id + " ; extra: " + fullExtraToString(item.extra), 'RefinedStorageDebug');
 			var slotFounded = false;
 			for(var i in gridData.slotsKeys){
 				var _slotName = gridData.slotsKeys[i];
 				var _slot = itemContainer.slots[_slotName];
-				if(_slot && (_slot.id == 0 || (_slot.id == item.id && _slot.data == item.data && _slot.extra == item.extra))){
+				//if(Config.dev)Logger.Log('Checking item: ' + getItemUid(_slot) + " ; extra: " + fullExtraToString(_slot.extra), 'RefinedStorageDebug');
+				if(_slot && (_slot.id == 0 || (_slot.id == item.id && _slot.data == item.data && (item.extra == _slot.extra || (item.extra && _slot.extra && fullExtraToString(item.extra) == fullExtraToString(_slot.extra)))))){
+					item.extra = _slot.extra;
 					if(Config.dev)Logger.Log('Founded slot: ' + _slotName + ' : ' + JSON.stringify(_slot.asScriptable()), 'RefinedStorageDebug');
 					slotFounded = true;
 					itemContainer.setSlot(_slotName, item.id, _slot.count + count, item.data, item.extra || null);
@@ -873,10 +875,10 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 				if(event.type == 'delete'){
 					var item = this.container.getSlot(i);//event.item;
 					var itemMaxStack = Item.getMaxStack(item.id);
-					var this_item = searchItem(item.id, item.data, false, true, p);
-					var count = this_item && this_item.count < itemMaxStack && this_item.extra == item.extra ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
+					var this_item = searchItem(item.id, item.data, item.extra, false, true, p);
+					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
-						player.addItemToInventory(item.id, count - res, item.data, item.extra || null, true);
+						player.addItemToInventory(item.id, count - res, item.data, (this_item ? this_item.extra : item.extra) || null, true);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}

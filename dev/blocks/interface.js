@@ -174,7 +174,7 @@ function initInterfaceElements(){
 		scale: elementsGUI_interface["nbt_button"].scale*20/16
 	}
 
-	var upgradesYstart = elementsGUI_interface["slot_import0"].y + slotsSize*0.25;
+	var upgradesYstart = elementsGUI_interface["nbt_button"].y + elementsGUI_interface["nbt_button"].scale*20 + slotsSize*0.25;
 	var upgradesYend = elementsGUI_interface["slot_output0"].y + slotsSize*0.75;
 	var upgradesSlotsSize = (upgradesYend - upgradesYstart)/4;
 	for(var i = 0; i < 4; i++){
