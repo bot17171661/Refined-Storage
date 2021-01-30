@@ -300,8 +300,8 @@ function compareCoords(_coords1, _coords2){
 	return false;
 }
 
-function cutNumber(num){
-	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 ? num3.toFixed(1) : num3) + 'B' : ((num2 = (num/1000000))%1 ? num2.toFixed(1) : num2) + 'M') : ((num2 = (num/1000))%1 ? num2.toFixed(1) : num2) + 'K') : num;
+function cutNumber(num, forGrid){
+	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 && (!forGrid || num3 <= 9.95) ? num3.toFixed(1) : Math.round(num3)) + 'B' : ((num2 = (num/1000000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'M') : ((num2 = (num/1000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'K') : num;
 }
 
 var mineColorsMap = {

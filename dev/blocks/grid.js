@@ -73,7 +73,7 @@ function gridSwitchPage(page, container, ignore, dontMoveSlider){
 		var item = slots[slotsKeys[i]] || { id: 0, data: 0, count: 0, extra: null };
 		//container.markSlotDirty("slot" + a);
 		container.markSlotDirty("slot" + a);
-		elements_.get("slot" + a).setBinding('text', cutNumber(item.count) + "");
+		elements_.get("slot" + a).setBinding('text', cutNumber(item.count, true) + "");
 		//container.setText("slot" + a, cutNumber(item.count));
 		container.setSlot("slot" + a, item.id, item.count, item.data, item.extra || null);
 	}
@@ -322,14 +322,14 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 									gridData.updateGui(true, true);
 								} else {
 									itemContainer.markSlotDirty('slot' + this.num);
-									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
+									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count, true) + "");
 									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 									//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								}
 							} else {
 								itemContainer.markSlotDirty('slot' + this.num);
-								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
+								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count, true) + "");
 								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
@@ -373,14 +373,14 @@ function grid_set_elements(x, y, cons, limit, elementsGUI_grid, grid_Data, _wind
 									gridData.updateGui(true, true);
 								} else {
 									itemContainer.markSlotDirty('slot' + this.num);
-									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
+									elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count, true) + "");
 									itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 									//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 									itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								}
 							} else {
 								itemContainer.markSlotDirty('slot' + this.num);
-								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count) + "");
+								elements_.get('slot' + this.num).setBinding('text', cutNumber(slotItem.count - _count, true) + "");
 								itemContainer.setSlot('slot' + this.num, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
 								//itemContainer.setText('slot' + this.num, cutNumber(slotItem.count - _count));
 								itemContainer.setSlot(slot, slotItem.id, slotItem.count - _count, slotItem.data, slotItem.extra);
@@ -691,6 +691,7 @@ var gridFuncs = {
 		return _length;
 	},
 	getPageFromCoords: function(_coords, pages){
+		pages -= _elementsGUI_craftingGrid['y_count'] - 1;
 		var interval = (pages - 1) > 0 ? (_elementsGUI_grid["max_y"] - _elementsGUI_grid["slider_button"].start_y) / (pages - 1) : 0;
 		function __getY(i) {
 			return ((interval * i) + _elementsGUI_grid["slider_button"].start_y);
@@ -708,6 +709,7 @@ var gridFuncs = {
 		return page + 1;
 	},
 	getCoordsFromPage: function(page, pages){
+		pages -= _elementsGUI_craftingGrid['y_count'] - 1;
 		var interval = (pages - 1) > 0 ? (_elementsGUI_grid["max_y"] - _elementsGUI_grid["slider_button"].start_y) / (pages - 1) : 0;
 		function __getY(i) {
 			return ((interval * i) + _elementsGUI_grid["slider_button"].start_y);

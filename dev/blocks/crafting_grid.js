@@ -60,7 +60,7 @@ GUIs.push(craftingGridGUI);
 
 function craftingGridSwitchPage(page, container, ignore, dontMoveSlider){
 	if(Config.dev)Logger.Log('Switch crafting grid Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
-	if(!container.getUiAdapter() || container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
+	if(!container.getUiAdapter() || !container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
 	var slots = container.slots;
 	var slotsKeys = craftingGridData.slotsKeys;
 	var slots_count = craftingGridData.slots_count;
@@ -87,7 +87,7 @@ function craftingGridSwitchPage(page, container, ignore, dontMoveSlider){
 		var a = i - (page * x_count);
 		var item = slots[slotsKeys[i]] || { id: 0, data: 0, count: 0, extra: null };
 		container.markSlotDirty("slot" + a);
-		elements_.get("slot" + a).setBinding('text', cutNumber(item.count) + "");
+		elements_.get("slot" + a).setBinding('text', cutNumber(item.count, true) + "");
 		//container.setText("slot" + a, cutNumber(item.count));
 		container.setSlot("slot" + a, item.id, item.count, item.data, item.extra || null);
 	}
@@ -99,10 +99,10 @@ function craftingGridSwitchCraftsPage(page, container, ignore, dontMoveSlider){
 	//delete asd1.networkData;
 	if(Config.dev)Logger.Log('Switch Crafts Page; page: ' + page + ' ; ignore: ' + ignore + ' ; dontMoveSlider: ' + dontMoveSlider + ' ; container: ' + container + ' ; craftingGridData: '/*  + JSON.stringify(asd1, null, '\t') */, 'RefinedStorageDebug');
 	if(!container.getUiAdapter() || !container.getUiAdapter().getWindow() || !container.getUiAdapter().getWindow().isOpened()) return false;
-	var slotsKeys = craftingGridData.crafts;
+	var crafts = craftingGridData.crafts;
 	var slots_count = craftingGridData.crafts_slots_count;
 	var x_count = craftingGridData.crafts_x_count;
-	var pages1 = craftingGridFuncs.craftsPages(slotsKeys.length);
+	var pages1 = craftingGridFuncs.craftsPages(crafts.length);
 	var pages = Math.max(1, pages1 + 1 - craftingGridData.crafts_y_count);
 	page = Math.max(1, Math.min(page, pages)) - 1;
 	if(page == craftingGridData.lastCraftsPage - 1 && !ignore) return false;
@@ -118,7 +118,6 @@ function craftingGridSwitchCraftsPage(page, container, ignore, dontMoveSlider){
 		}
 		return false;
 	}
-	var crafts = craftingGridData.crafts;
 	var window = uiAdapter.getWindow();
 	var content = window.getContent();
 	var window1 = window.getWindow('main');
@@ -511,6 +510,7 @@ var craftingGridFuncs = {
 		return _length;
 	},
 	getPageFromCoords: function(_coords, pages){
+		pages -= _elementsGUI_craftingGrid['y_count'] - 1;
 		var interval = (pages - 1) > 0 ? (_elementsGUI_craftingGrid["max_y"] - _elementsGUI_craftingGrid["slider_button"].start_y) / (pages - 1) : 0;
 		function __getY(i) {
 			return ((interval * i) + _elementsGUI_craftingGrid["slider_button"].start_y);
@@ -527,8 +527,25 @@ var craftingGridFuncs = {
 		var page = finish_i;
 		return page + 1;
 	},
+	getCoordsFromPage: function(page, pages){
+		pages -= _elementsGUI_craftingGrid['y_count'] - 1;
+		var interval = (pages - 1) > 0 ? (_elementsGUI_craftingGrid["max_y"] - _elementsGUI_craftingGrid["slider_button"].start_y) / (pages - 1) : 0;
+		function __getY(i) {
+			return ((interval * i) + _elementsGUI_craftingGrid["slider_button"].start_y);
+		}
+		if (page > pages) page = pages;
+		if (page < 1) page = 1;
+		return __getY(page - 1);
+	},
+	craftsPages: function(_length){
+		if(_length == 0) return 1;
+		_length = Math.ceil(_length / _elementsGUI_craftingGrid["crafts_x_count"]);
+		return _length;
+	},
 	getCraftsPageFromCoords: function(_coords, pages){
+		pages -= _elementsGUI_craftingGrid['crafts_y_count'] - 1;
 		var interval = (pages - 1) > 0 ? (_elementsGUI_craftingGrid["crafts_max_y"] - _elementsGUI_craftingGrid["crafts_slider"].start_y) / (pages - 1) : 0;
+		if(Config.dev)Logger.Log('interval: ' + interval + ' ; pages: ' + pages + ' ; _coords_y: ' + _coords.y + ' ; crafts_slider_start_y: ' + _elementsGUI_craftingGrid["crafts_slider"].start_y + ' ; crafts_max_y: ' + _elementsGUI_craftingGrid["crafts_max_y"] + ' ; crafts_x_count: ' + _elementsGUI_craftingGrid["crafts_x_count"], 'RefinedStorageDebug');
 		function __getY(i) {
 			return ((interval * i) + _elementsGUI_craftingGrid["crafts_slider"].start_y);
 		}
@@ -544,17 +561,10 @@ var craftingGridFuncs = {
 		var page = finish_i;
 		return page + 1;
 	},
-	getCoordsFromPage: function(page, pages){
-		var interval = (pages - 1) > 0 ? (_elementsGUI_craftingGrid["max_y"] - _elementsGUI_craftingGrid["slider_button"].start_y) / (pages - 1) : 0;
-		function __getY(i) {
-			return ((interval * i) + _elementsGUI_craftingGrid["slider_button"].start_y);
-		}
-		if (page > pages) page = pages;
-		if (page < 1) page = 1;
-		return __getY(page - 1);
-	},
 	getCraftsCoordsFromPage: function(page, pages){
+		pages -= _elementsGUI_craftingGrid['crafts_y_count'] - 1;
 		var interval = (pages - 1) > 0 ? (_elementsGUI_craftingGrid["crafts_max_y"] - _elementsGUI_craftingGrid["crafts_slider"].start_y) / (pages - 1) : 0;
+		if(Config.dev)Logger.Log('interval: ' + interval + ' ; pages: ' + pages + ' ; page: ' + page + ' ; crafts_slider_start_y: ' + _elementsGUI_craftingGrid["crafts_slider"].start_y + ' ; crafts_max_y: ' + _elementsGUI_craftingGrid["crafts_max_y"] + ' ; crafts_x_count: ' + _elementsGUI_craftingGrid["crafts_x_count"], 'RefinedStorageDebug');
 		function __getY(i) {
 			return ((interval * i) + _elementsGUI_craftingGrid["crafts_slider"].start_y);
 		}
@@ -642,11 +652,6 @@ var craftingGridFuncs = {
 		var sorted = ScriptableObjectHelper.createArray(RSJava.sortCrafts(items, craftsTextSearch ? craftsTextSearch : null, Object.assign(inventoryOnlyItemsMap, onlyItemsMap), _object, inventoryItems, craftingGridData.isDarkenMap));
 		if(Config.dev)Logger.Log('Crafts array sorted on: ' + (java.lang.System.currentTimeMillis() - millis), "RefinedStorageDebug");
 		return sorted;
-	},
-	craftsPages: function(_length){
-		if(_length == 0) return 1;
-		_length = Math.ceil(_length / _elementsGUI_craftingGrid["crafts_x_count"]);
-		return _length;
 	},
 	selectRecipe: function(javaRecipe, container, originalOnlyItemsExtraMap, originalOnlyItemsMap, originalItemsMap){
 		if (!javaRecipe) return false;

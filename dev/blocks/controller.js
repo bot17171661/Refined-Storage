@@ -1107,6 +1107,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		},
 		containerEvents: {
 			openGui: function(container, window, windowContent, eventData){
+				if(!windowContent || !window || !window.isOpened()) return;
 				var networkData = SyncedNetworkData.getClientSyncedData(eventData.name);
 				controller_other_data.networkData = networkData;
 				controller_other_data.net_map = eventData.net_map;
@@ -1119,6 +1120,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 				controllerSwitchPage(1, container, controller_other_data, true);
 			},
 			refreshGui:function(container, window, windowContent, eventData){
+				if(!windowContent || !window || !window.isOpened()) return;
 				controller_other_data.net_map = eventData.net_map;
 				controller_other_data.isActive = eventData.isActive;
 				windowContent.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);

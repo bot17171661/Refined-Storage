@@ -448,6 +448,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		},
 		containerEvents: {
 			openGui: function(container, window, content, eventData){
+				if(!content || !window || !window.isOpened()) return;
 				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				content.elements["image_access_type"].bitmap = 'RS_dd_access_' + eventData.access_type;
 				setIntervalLocal(function(){
@@ -457,6 +458,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 				}, 1);
 			},
 			refreshGui:function(container, window, content, eventData){
+				if(!content || !window || !window.isOpened()) return;
 				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				content.elements["image_access_type"].bitmap = 'RS_dd_access_' + eventData.access_type;
 			}

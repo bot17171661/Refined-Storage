@@ -416,6 +416,7 @@ RefinedStorage.createTile(BlockID.RS_interface, {
 		},
 		containerEvents: {
 			openGui: function(container, window, content, eventData){
+				if(!content || !window || !window.isOpened()) return;
 				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				content.elements["image_damage"].bitmap = eventData.useDamage ? 'RS_damage_on' : 'RS_damage_off';
 				content.elements["image_nbt"].bitmap = eventData.useNbt ? 'RS_nbt_on' : 'RS_nbt_off';
