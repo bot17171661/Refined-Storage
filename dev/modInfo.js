@@ -490,7 +490,7 @@
     Callback.addCallback('PostLoaded', function(){
         if(skipButton) return;
         ModInfoUI_Button_Container.openAs(ModInfoUI_Button);
-    })
+    }, Number.MIN_VALUE);
 
     function switchPage(name){
         for(var i in mainWindows){

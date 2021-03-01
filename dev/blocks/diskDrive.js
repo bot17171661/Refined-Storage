@@ -268,8 +268,10 @@ var diskDriveGUI = new UI.StandartWindow({
 GUIs.push(diskDriveGUI);
 testButtons(diskDriveGUI.getWindow('header').getContent().elements, initDDelements);
 
+var _ddfont = new JavaFONT(elementsGUI_dd['items'].font);
 var getDiskDriveTextItemsWidth = function(){
-	return 0;
+	var drawScale = diskDriveGUI.getWindow('main').location.getDrawingScale();
+	return _ddfont.getBounds(text, elementsGUI_dd['items'].x * drawScale, elementsGUI_dd['items'].y * drawScale, parseFloat(1.0)).width();
 };
 (function(){
 	var elementIns = diskDriveGUI.getWindow('main').getElements().get('items');
@@ -299,18 +301,12 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		if(!this.data.disks_percents)this.data.disks_percents = [];
 		this.data.iinit = true;
 		this.networkData.putString('slots', JSON.stringify(this.getDiskDatas()));
-		/* this.container.setGlobalAddTransferPolicy({
-			transfer: function(container, slot, id, count, data, extra, __long){
-				alert('Transfering slot: ' + slot + ' : ' + id + ' : ' + count + ' : ' + data);
+		this.container.setGlobalAddTransferPolicy({
+			transfer: function(itemContainer, slot, id, count, data, extra, player){
+				if(!Disk.items[id]) count = 0;
 				return count;
 			}
 		});
-		this.container.setGlobalGetTransferPolicy({
-			transfer: function(container, slot, id, count, data, extra, __long){
-				alert('Transfering GET slot: ' + slot + ' : ' + id + ' : ' + count + ' : ' + data);
-				return count;
-			}
-		}); */
 	},
 	post_setActive: function(state){
 		if(this.data.NETWORK_ID != "f")RSNetworks[this.data.NETWORK_ID].info.updateItems();
@@ -393,6 +389,7 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 		return;
 	},
 	post_update_network: function(net_id){
+		if(RSNetworks && RSNetworks[this.data.LAST_NETWORK_ID] && RSNetworks[this.data.LAST_NETWORK_ID].info)RSNetworks[this.data.LAST_NETWORK_ID].info.updateItems();
 		if(this.data.iinit && this.isWorkAllowed()){
 			RSNetworks[this.data.NETWORK_ID].info.updateItems();
 			this.data.iinit = false;
@@ -434,7 +431,12 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 				return elem;
 			}) : [{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0},{id: 0, data: 0, storage: 0, items_stored: 0}];
 			if(Config.dev)Logger.Log('Local refreshing DiskDrive model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
-			mapDisks(this, this.networkData.getInt('block_data'), disks_data, this.networkData.getBoolean('isActive'));
+			mapDisks(this, this.networkData.getInt('block_data') || 0, disks_data, this.networkData.getBoolean('isActive'));
+		},
+		tick: function(){
+			if(!diskDriveGUI.isOpened()) return;
+			var element = diskDriveGUI.getWindow('main').getElements().get('items');
+			element.setPosition(Math.max(elementsGUI_dd['items'].start_x - getDiskDriveTextItemsWidth()/2, elementsGUI_dd['scale'].x), elementsGUI_dd['items'].y);
 		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
@@ -451,11 +453,6 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 				if(!content || !window || !window.isOpened()) return;
 				content.elements["image_redstone"].bitmap = 'redstone_GUI_' + (eventData.redstone_mode || 0);
 				content.elements["image_access_type"].bitmap = 'RS_dd_access_' + eventData.access_type;
-				setIntervalLocal(function(){
-					if(!window.isOpened()) return true;
-					var element = window.getWindow('main').getElements().get('items');
-					element.setPosition(Math.max(content.elements['items'].start_x - getDiskDriveTextItemsWidth()/2, content.elements['scale'].x), content.elements['items'].y);
-				}, 1);
 			},
 			refreshGui:function(container, window, content, eventData){
 				if(!content || !window || !window.isOpened()) return;

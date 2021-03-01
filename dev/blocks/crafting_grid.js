@@ -730,9 +730,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 		if (!client || this.container.getNetworkEntity().getClients().contains(client)) return true;
 		this.items();
 		this.container.openFor(client, "main");
-		/* this.data.firstOpen = World.getThreadTime() + 5;
-		this.data.firstOpenClients.push(client); */
-		this.refreshGui(true, client); 
+		if(InnerCore_pack.packVersionCode < 119)this.refreshGui(true, client); 
 		return true;
 	},
 	refreshModel: function(){
@@ -786,14 +784,15 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				if(slot_.count != 0){
 					var answ = this.pushItem(slot_, slot_.count, true);
 					if(answ != 0){
-						__PlayerActor.addItemToInventory(slot_.id, answ, slot_.data, null, true);
+						__PlayerActor.addItemToInventory(slot_.id, answ, slot_.data);
 					}
 				}
 			}
 		};
 		cbkUsedFunc.apply(this);
 		Callback.invokeCallback("VanillaWorkbenchCraft", result, this.container);
-		__PlayerActor.addItemToInventory(result.id, result.count, result.data, result.extra);
+		if(!result.extra)__PlayerActor.addItemToInventory(result.id, result.count, result.data);
+		else __PlayerActor.addItemToInventory(result.id, result.count, result.data, result.extra || null);
 		Callback.invokeCallback("VanillaWorkbenchPostCraft", result, this.container);
 		return true;
 	},
@@ -840,7 +839,9 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 					var this_item = searchItem(item.id, item.data, item.extra, false, true, p);
 					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
-						player.addItemToInventory(item.id, count - res, item.data, (this_item ? this_item.extra : item.extra) || null, true);
+						var _extra = (this_item ? this_item.extra : item.extra);
+						if(!_extra) player.addItemToInventory(item.id, count - res, item.data);
+						else player.addItemToInventory(item.id, count - res, item.data, _extra || null);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}

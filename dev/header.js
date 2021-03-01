@@ -154,7 +154,8 @@ function set_net_for_blocks(_coords, net_id, _self, _first, _defaultActive, _for
 			var isRsBlock = (RS_blocks.indexOf(bck.id) != -1);
 			if (bck.id == BlockID.RS_controller) {
 				if(net_id == 'f') continue;
-				blockSource_.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+				if(InnerCore_pack.packVersionCode < 120) blockSource_.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+				else blockSource_.breakBlock(coordss.x, coordss.y, coordss.z, true);
                 if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
 				continue;
 			} else if (bck.id == BlockID.RS_cable) {
@@ -271,74 +272,6 @@ function searchBlocksInNetwork(net_id, id){
 		}
 	}
 	return res;
-}
-
-function getItemUid(item){
-	return item.id + '_' + item.data + (item.extra && item.extra.getValue() != 0 ? '_' + item.extra.getValue() : '');
-}
-
-function parseItemUid(itemUid){
-	var splits = itemUid.split('_');
-	return {
-		id: splits[0],
-		data: splits[1],
-		extra: splits[2] || null
-	}
-}
-
-function eventToScriptable(_event){
-	return {y:_event.y, x: _event.x, type: _event.type + "", _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
-}
-
-function compareSlots(slot1, slot2){
-	if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && slot1.extra == slot2.extra) return true;
-	return false;
-}
-
-function compareCoords(_coords1, _coords2){
-	if(_coords1.x == _coords2.x && _coords1.y == _coords2.y && _coords1.z == _coords2.z) return true;
-	return false;
-}
-
-function cutNumber(num, forGrid){
-	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 && (!forGrid || num3 <= 9.95) ? num3.toFixed(1) : Math.round(num3)) + 'B' : ((num2 = (num/1000000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'M') : ((num2 = (num/1000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'K') : num;
-}
-
-var mineColorsMap = {
-	'0': android.graphics.Color.rgb(0, 0, 0),
-	'1': android.graphics.Color.rgb(0, 0, 170),
-	'2': android.graphics.Color.rgb(0, 170, 0),
-	'3': android.graphics.Color.rgb(0, 170, 170),
-	'4': android.graphics.Color.rgb(170, 0, 0),
-	'5': android.graphics.Color.rgb(170, 0, 170),
-	'6': android.graphics.Color.rgb(255, 170, 0),
-	'7': android.graphics.Color.rgb(170, 170, 170),
-	'8': android.graphics.Color.rgb(85, 85, 85),
-	'9': android.graphics.Color.rgb(85, 85, 255),
-	'a': android.graphics.Color.rgb(85, 255, 85),
-	'b': android.graphics.Color.rgb(85, 255, 255),
-	'c': android.graphics.Color.rgb(255, 85, 85),
-	'd': android.graphics.Color.rgb(255, 85, 255),
-	'e': android.graphics.Color.rgb(255, 255, 85),
-	'f': android.graphics.Color.rgb(255, 255, 255),
-	'g': android.graphics.Color.rgb(221, 214, 5)
-}
-function parseMineColor(symbol){
-	if(symbol[0] == '§') symbol = symbol[1];
-	var answ = mineColorsMap[symbol] || android.graphics.Color.WHITE;
-	return answ;
-}
-
-function fullExtraToString(extra, usenbt){
-	if(!extra) return "";
-	var str = "";
-	if(jsonExtra = extra.asJson()){
-		if((_value = jsonExtra.opt('data')) && _value.length() == 0) jsonExtra.remove('data');
-		if((_value = jsonExtra.opt('name')) && _value.length() == 0) jsonExtra.remove('name');
-		str += jsonExtra.toString();
-	}
-	//if(usenbt && (tag__1 = extra.getCompoundTag()))str += JSON.stringify(tag__1.toScriptable());
-	return str;
 }
 
 var DiskData = [false];
@@ -526,10 +459,59 @@ const RS_blocks = [];
 Callback.addCallback('PostLoaded', function(){
 	for(var i in RS_blocks)World.setBlockChangeCallbackEnabled(RS_blocks[i], true);
 })
-
+World.setBlockChangeCallbackEnabled(535, true);
+World.setBlockChangeCallbackEnabled(250, true);
+World.setBlockChangeCallbackEnabled(34, true);
+var pistonsPoss = [
+	[0, -1, 0],
+	[0, 1, 0],
+	[0, 0, 1],
+	[0, 0, -1],
+	[1, 0, 0],
+	[-1, 0, 0]
+]
+var pistonsMove__ = {};
+var ignoredParams = ['NETWORK_ID','LAST_NETWORK_ID','controller_coords','createdCalled'];
 Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _blockSource){
+	//alert('Block changed from: ' + oldBlock.id + "|" + oldBlock.data + " ; to: " + newBlock.id + "|" + newBlock.data);
 	_blockSource = BlockSource.getDefaultForDimension(_blockSource);
 	coords.blockSource = _blockSource;
+	if(oldBlock.id == 535 || newBlock.id == 535 || newBlock.id == 34) {
+		var pistonBlockData = newBlock.id == 535 || newBlock.id == 34 ? newBlock.data : oldBlock.data;
+		var pistonPos = pistonsPoss[pistonBlockData];
+		var from_coords = oldBlock.id == 535 ? {
+			x: coords.x + pistonPos[0],
+			y: coords.y + pistonPos[1],
+			z: coords.z + pistonPos[2]
+		} : coords;
+		var to_coords = newBlock.id == 535 || newBlock.id == 34 ? {
+			x: coords.x + pistonPos[0],
+			y: coords.y + pistonPos[1],
+			z: coords.z + pistonPos[2]
+		} : coords;
+		var __tile = World.getTileEntity(from_coords.x, from_coords.y, from_coords.z, _blockSource);
+		if(__tile){
+			pistonsMove__[cts(to_coords)] = __tile;
+		}
+	}
+	if(oldBlock.id == 250) {
+		if((oldTileData = pistonsMove__[cts(coords)]) && (newTileData = World.addTileEntity(coords.x, coords.y, coords.z, _blockSource))){
+			for(var i in newTileData.data){
+				if(ignoredParams.indexOf(i) == -1){
+					newTileData.data[i] = oldTileData.data[i];
+				}
+			}
+			var unsaveableSlotsArray = Array.isArray(oldTileData.unsaveableSlots) ? oldTileData.unsaveableSlots : [];
+			if(!oldTileData.unsaveableSlots || unsaveableSlotsArray.length > 0)for(var i in oldTileData.container.slots){
+				if(unsaveableSlotsArray.length > 0 && unsaveableSlotsArray.indexOf(i) != -1) continue;
+				var _slot = oldTileData.container.slots[i];
+				newTileData.container.setSlot(i, _slot.id, _slot.count, _slot.data, _slot.extra);
+				oldTileData.container.setSlot(i, 0,0,0,null);
+			}
+			TileEntity.destroyTileEntity(oldTileData);
+			delete pistonsMove__[cts(coords)];
+		}
+	}
 	if (oldBlock.id == BlockID.RS_cable) {
 		for(var i in RSNetworks){
 			if(RSNetworks[i][cts(coords)]) delete RSNetworks[i][cts(coords)];
@@ -537,13 +519,13 @@ Callback.addCallback('BlockChanged', function(coords, oldBlock, newBlock, _block
 	}
 	var isOldBlock = RS_blocks.indexOf(oldBlock.id) != -1;
 	var isNewBlock = RS_blocks.indexOf(newBlock.id) != -1;
-	if(isNewBlock && newBlock.id != BlockID.RS_cable){
-		var _newTile = World.addTileEntity(coords.x, coords.y, coords.z, _blockSource) || World.getTileEntity(coords.x, coords.y, coords.z, _blockSource);
+	/* if(isNewBlock && newBlock.id != BlockID.RS_cable){
+		var _newTile = World.getTileEntity(coords.x, coords.y, coords.z, _blockSource) || World.addTileEntity(coords.x, coords.y, coords.z, _blockSource);
 		if(newBlock.id == BlockID.RS_controller && newBlock.data == 3 && _newTile){
 			_newTile.data.isCreative = true;
 			_newTile.data.energy = Config.controller.energyCapacity;
 		}
-	}
+	} */
 	if(oldBlock.id != BlockID.RS_controller && isOldBlock)for(var i in sides){
 		var zCoords = {
 			x: coords.x + sides[i][0],
@@ -630,6 +612,13 @@ const RefinedStorage = {
 						}
 					}
 				});
+				if(this.unsaveableSlots){
+					if(Array.isArray(this.unsaveableSlots)){
+						for(var i in this.unsaveableSlots)this.container.setSlotSavingEnabled(this.unsaveableSlots[i], false);
+					} else {
+						this.container.setGlobalSlotSavingEnabled(false);
+					}
+				}
 				if(this.upgradesSlots)for(var i in this.upgradesSlots){
 					this.container.setSlotAddTransferPolicy(this.upgradesSlots[i], {
 						transfer: function(itemContainer, slot, id, count, data, extra, player){
@@ -667,6 +656,7 @@ const RefinedStorage = {
 			params.update_network = function (net_id, _first) {
 				if (this.pre_update_network) if(this.pre_update_network(net_id)) return true;
 				if(net_id == 'f' && RSNetworks[this.data.NETWORK_ID] && (netElement = RSNetworks[this.data.NETWORK_ID][cts(this)]) && netElement.id == this.blockInfo.id) delete RSNetworks[this.data.NETWORK_ID][cts(this)];
+				this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 				this.data.NETWORK_ID = net_id;
 				this.networkData.putInt('NETWORK_ID', net_id != 'f' ? net_id : -1);
 				if (net_id != "f" && RSNetworks[net_id]) {
@@ -695,14 +685,6 @@ const RefinedStorage = {
 				this.data.upgrades = {};
 				this.data.createdCalled = true;
 				if (this.pre_created) this.pre_created();
-				/* var controller = searchController(this);
-				if (controller) {
-					var tile = World.getTileEntity(controller.x, controller.y, controller.z, this.data.blockSource);
-					if (tile) {
-						tile.updateControllerNetwork();
-						if (this.post_created) this.post_created();
-					}
-				} */
 			}
 		}
 		if (!params.setActive) {
@@ -770,13 +752,13 @@ const RefinedStorage = {
 			}
 		}
 		if(!params.destroy){
-			params.destroy = function(){
-				if(this.pre_destroy) this.pre_destroy();
+			params.destroy = function(param1){
+				if(this.pre_destroy) this.pre_destroy(param1);
 				if(this.data.NETWORK_ID != 'f' && RSNetworks[this.data.NETWORK_ID]) delete RSNetworks[this.data.NETWORK_ID][cts(this)];
 				this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
 				this.data.NETWORK_ID = 'f';
 				//BlockRenderer.unmapAtCoords(this.x, this.y, this.z);
-				if(this.post_destroy) this.post_destroy();
+				if(this.post_destroy) this.post_destroy(param1);
 			}
 		}
 		if(!params.isWorkAllowed){

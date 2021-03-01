@@ -56,7 +56,30 @@ Item.registerIconOverrideFunction(BlockID['RS_controller'], function(item, isMod
 })
 
 Block.registerDropFunction("RS_controller", function (coords, id, data, diggingLevel, toolLevel, player, _blockSource) {
-	return [];
+	var extra = null;
+	var tile = World.getTileEntity(coords.x, coords.y, coords.z, _blockSource);
+	if(tile){
+		tile.data.LAST_NETWORK_ID = tile.data.NETWORK_ID;
+		tile.data.NETWORK_ID == "f";
+		if(tile.data.isCreative){
+			return;
+		}
+		var extra = null;
+		if (tile.data.energy > 0) {
+			extra = new ItemExtraData();
+			extra.putInt('energy', tile.data.energy);
+		}
+		var block_data = 0;
+		var energyScaled = controllerFuncs.getEnergyScaled(100, tile.data.energy);
+		if (energyScaled <= 0) {
+			block_data = 0;
+		} else if (energyScaled <= 20) {
+			block_data = 1;
+		} else {
+			block_data = 2;
+		}
+	}
+	return [[id, 1, data, extra]];
 });
 
 Block.registerPlaceFunction("RS_controller", function (coords, item, block, player, blockSource) {
@@ -412,6 +435,7 @@ var controllerFuncs = {
 		return _length;//Math.max(_length - Math.min(_length, 4) + 1, 0) || 1;
 	},
 	getPageFromCoords: function(_coords, pages){
+		pages -= 1;
 		var max_y = controller_other_data.max_y;
 		var interval = (pages - 1) > 0 ? (max_y - elementsGUI_controller["slider_button"].start_y) / (pages - 1) : 0;
 		function __getY(i) {
@@ -430,6 +454,7 @@ var controllerFuncs = {
 		return page + 1;
 	},
 	getCoordsFromPage: function(page, pages){
+		pages -= 1;
 		var max_y = controller_other_data.max_y;
 		var interval = (pages - 1) > 0 ? (max_y - elementsGUI_controller["slider_button"].start_y) / (pages - 1) : 0;
 		function __getY(i) {
@@ -459,6 +484,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		updateModel: false,
 		lastTexture: ''
 	},
+	unsaveableSlots: true,
 	useNetworkItemContainer: true,
 	created: function () {
         if(!this.blockSource)this.blockSource = BlockSource.getDefaultForDimension(this.dimension);
@@ -474,17 +500,19 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 						for(var i in RSNetworks){
 							if(RSNetworks[i][cts(coordss)]){
 								delete RSNetworks[i][cts(coordss)];
-								this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
-								if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
-								if(InnerCore_pack.packVersionCode <= 110)Callback.invokeCallback('BlockChanged', coordss, {id:bck.id, data:bck.data}, {id:0, data:0}, this.dimension);
+								if(InnerCore_pack.packVersionCode < 120) this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+								else this.blockSource.breakBlock(coordss.x, coordss.y, coordss.z, true);
+								if(InnerCore_pack.packVersionCode < 120)Block.onBlockDestroyed(coordss, bck, false, Player.get());
+								if(InnerCore_pack.packVersionCode < 120)Callback.invokeCallback('BlockChanged', coordss, {id:bck.id, data:bck.data}, {id:0, data:0}, this.dimension);
 							}
 						}
 					} else {
 						var tile = World.getTileEntity(coordss.x, coordss.y, coordss.z, this.blockSource);
 						if (tile && tile.data.NETWORK_ID != 'f' && tile.data.NETWORK_ID != this.data.NETWORK_ID) {
-							this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
-							if(InnerCore_pack.packVersionCode <= 110)Block.onBlockDestroyed(coordss, bck, false, Player.get());
-							if(InnerCore_pack.packVersionCode <= 110)Callback.invokeCallback('BlockChanged', coordss, {id:bck.id, data:bck.data}, {id:0, data:0}, this.dimension);
+							if(InnerCore_pack.packVersionCode < 120) this.blockSource.destroyBlock(coordss.x, coordss.y, coordss.z, true);
+							else this.blockSource.breakBlock(coordss.x, coordss.y, coordss.z, true);
+							if(InnerCore_pack.packVersionCode < 120)Block.onBlockDestroyed(coordss, bck, false, Player.get());
+							if(InnerCore_pack.packVersionCode < 120)Callback.invokeCallback('BlockChanged', coordss, {id:bck.id, data:bck.data}, {id:0, data:0}, this.dimension);
 						}
 					}
 				}
@@ -514,6 +542,13 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			this.networkData.putInt('energy', this.data.energy);
 			this.networkData.putInt('NETWORK_ID', RSNetworks.length);
 			this.networkData.putBoolean('isActive', this.data.isActive || false);
+			if(this.unsaveableSlots){
+				if(Array.isArray(this.unsaveableSlots)){
+					for(var i in this.unsaveableSlots)this.container.setSlotSavingEnabled(this.unsaveableSlots[i], false);
+				} else {
+					this.container.setGlobalSlotSavingEnabled(false);
+				}
+			}
 			var _data = {};
 			_data[cts(this)] = {
 				id: BlockID.RS_controller,
@@ -893,14 +928,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	updateControllerNetwork: function(_first){
-		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, _first ? undefined : this.data.isActive/* , function(coords, block){
-			if(block.id == BlockID.RS_controller/*  && cts(this) != cts(coords) ){
-				alert('WIY WIY WIY WIY');
-				World.destroyBlock(coords.x, coords.y, coords.z, true);
-				return true;
-			}
-		} */);
-		//set_is_active_for_blocks_net(this.data.NETWORK_ID, this.data.isActive, true);
+		set_net_for_blocks(this, this.data.NETWORK_ID, false, _first, _first ? undefined : this.data.isActive);
 	},
 	click: function (id, count, data, coords, player, extra) {
 		if(Entity.getSneaking(player)) return false;
@@ -1060,27 +1088,6 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			set_net_for_blocks(this, 'f');
 			delete RSNetworks[this.data.NETWORK_ID];
 		}
-		this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
-		this.data.NETWORK_ID == "f";
-		if(this.data.isCreative){
-			this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, 3, null);
-			return;
-		}
-		var extra = null;
-		if (this.data.energy > 0) {
-			extra = new ItemExtraData();
-			extra.putInt('energy', this.data.energy);
-		}
-		var block_data = 0;
-		var energyScaled = controllerFuncs.getEnergyScaled(100, this.data.energy);
-		if (energyScaled <= 0) {
-			block_data = 0;
-		} else if (energyScaled <= 20) {
-			block_data = 1;
-		} else {
-			block_data = 2;
-		}
-		this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, block_data, extra);
 	},
 	getScreenByName: function(screenName) {
 		if(screenName == 'main')return CONTROLLER_GUI;

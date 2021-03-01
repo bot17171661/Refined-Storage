@@ -794,6 +794,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		firstOpenClients: [],
 		fullRefreshPage: false
 	},
+	unsaveableSlots: true,
 	useNetworkItemContainer: true,
 	setActiveNotUpdateGui: true,
 	click: function (id, count, data, coords, player, extra) {
@@ -808,7 +809,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		setTimeout(function(){
 			ths.refreshGui(true, client);
 		},40); */
-		this.refreshGui(true, client);
+		if(InnerCore_pack.packVersionCode < 119)this.refreshGui(true, client); 
 		return true;
 	},
 	onWindowClose: function(){
@@ -817,7 +818,8 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = false;
 		if((iIndex = RSNetworks[this.data.NETWORK_ID].info.openedGrids.findIndex(function(element){return cts(element) == coords_id})) != -1) RSNetworks[this.data.NETWORK_ID].info.openedGrids.splice(iIndex, 1);
 	},
-	onWindowOpen: function(){
+	onWindowOpen: function(container, client){
+		if(InnerCore_pack.packVersionCode >= 119)this.refreshGui(true, client); 
 		if(this.data.NETWORK_ID == 'f') return;
 		var coords_id = this.coords_id();
 		RSNetworks[this.data.NETWORK_ID][coords_id].isOpenedGrid = true;
@@ -880,7 +882,9 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					var this_item = searchItem(item.id, item.data, item.extra, false, true, p);
 					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
-						player.addItemToInventory(item.id, count - res, item.data, (this_item ? this_item.extra : item.extra) || null, true);
+						var _extra = (this_item ? this_item.extra : item.extra);
+						if(!_extra) player.addItemToInventory(item.id, count - res, item.data);
+						else player.addItemToInventory(item.id, count - res, item.data, _extra || null);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}

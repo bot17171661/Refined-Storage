@@ -36,14 +36,14 @@ const searchItem = function (id, data, extra, list, reverse, playerUid) {
 	if(typeof(id) != "number")id = -1;
 	if(typeof(extra) == "boolean"){
 		playerUid = reverse; reverse = list; list = extra;
-		extra = null;
+		extra = -1;
 	}
 	if(reverse){
 		if(list){
 			var itemsList = [];
 			for (var i = 35; i >= 0; i--) {
 				var item = player.getInventorySlot(i);
-				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
+				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (extra == -1 || item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
 					itemsList.push({
 						id: item.id,
 						data: item.data,
@@ -56,7 +56,7 @@ const searchItem = function (id, data, extra, list, reverse, playerUid) {
 			return itemsList;
 		} else for (var i = 35; i >= 0; i--) {
 			var item = player.getInventorySlot(i);
-			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
+			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (extra == -1 || item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
 				return {
 					id: item.id,
 					data: item.data,
@@ -71,7 +71,7 @@ const searchItem = function (id, data, extra, list, reverse, playerUid) {
 			var itemsList = [];
 			for (var i = 0; i <= 35; i++) {
 				var item = player.getInventorySlot(i);
-				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
+				if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (extra == -1 || item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
 					itemsList.push({
 						id: item.id,
 						data: item.data,
@@ -84,7 +84,7 @@ const searchItem = function (id, data, extra, list, reverse, playerUid) {
 			return itemsList;
 		} else for (var i = 0; i <= 35; i++) {
 			var item = player.getInventorySlot(i);
-			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
+			if ((item.id == id || (id == -1 && item.id != 0)) && (item.data == data || data == -1) && (extra == -1 || item.extra == extra || (item.extra && extra && fullExtraToString(item.extra) == fullExtraToString(extra)))) {
 				return {
 					id: item.id,
 					data: item.data,
@@ -453,6 +453,15 @@ const newSides = [
 	[1, 0, 0]
 ]
 
+const newSides_ = [
+	'0_-1_0',
+	'0_1_0',
+	'0_0_-1',
+	'0_0_1',
+   	'-1_0_0',
+	'1_0_0'
+]
+
 const createAnim = function(_values, _duration, _updateFunc){
 	var animation = JAVA_ANIMATOR.ofInt(_values);
 	animation.setDuration(_duration);
@@ -479,4 +488,97 @@ const stopAnim = function(_animation){
 
 const numberWithCommas = function(_num) {
     return _num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function getItemUid(item){
+	return item.id + '_' + item.data + (item.extra && item.extra.getValue() != 0 ? '_' + item.extra.getValue() : '');
+}
+
+function parseItemUid(itemUid){
+	var splits = itemUid.split('_');
+	return {
+		id: splits[0],
+		data: splits[1],
+		extra: splits[2] || null
+	}
+}
+
+function eventToScriptable(_event){
+	return {y:_event.y, x: _event.x, type: _event.type + "", _x: _event._x, _y:_event._y, localY: _event.localY, localX: _event.localX};
+}
+
+function compareSlots(slot1, slot2, extraToString){
+	if(slot1.id == slot2.id && slot1.data == slot2.data && slot1.count == slot2.count && (extraToString && slot1.extra && slot2.extra ? fullExtraToString(slot1.extra) == fullExtraToString(slot2.extra) : slot1.extra == slot2.extra)) return true;
+	return false;
+}
+
+function compareCoords(_coords1, _coords2){
+	if(_coords1.x == _coords2.x && _coords1.y == _coords2.y && _coords1.z == _coords2.z) return true;
+	return false;
+}
+
+function cutNumber(num, forGrid){
+	return num > 999 ? (num > 999999 ? (num > 999999999 ? ((num3 = (num/1000000000))%1 && (!forGrid || num3 <= 9.95) ? num3.toFixed(1) : Math.round(num3)) + 'B' : ((num2 = (num/1000000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'M') : ((num2 = (num/1000))%1 && (!forGrid || num2 <= 9.95) ? num2.toFixed(1) : Math.round(num2)) + 'K') : num;
+}
+
+var mineColorsMap = {
+	'0': android.graphics.Color.rgb(0, 0, 0),
+	'1': android.graphics.Color.rgb(0, 0, 170),
+	'2': android.graphics.Color.rgb(0, 170, 0),
+	'3': android.graphics.Color.rgb(0, 170, 170),
+	'4': android.graphics.Color.rgb(170, 0, 0),
+	'5': android.graphics.Color.rgb(170, 0, 170),
+	'6': android.graphics.Color.rgb(255, 170, 0),
+	'7': android.graphics.Color.rgb(170, 170, 170),
+	'8': android.graphics.Color.rgb(85, 85, 85),
+	'9': android.graphics.Color.rgb(85, 85, 255),
+	'a': android.graphics.Color.rgb(85, 255, 85),
+	'b': android.graphics.Color.rgb(85, 255, 255),
+	'c': android.graphics.Color.rgb(255, 85, 85),
+	'd': android.graphics.Color.rgb(255, 85, 255),
+	'e': android.graphics.Color.rgb(255, 255, 85),
+	'f': android.graphics.Color.rgb(255, 255, 255),
+	'g': android.graphics.Color.rgb(221, 214, 5)
+}
+function parseMineColor(symbol){
+	if(symbol[0] == '§') symbol = symbol[1];
+	var answ = mineColorsMap[symbol] || android.graphics.Color.WHITE;
+	return answ;
+}
+
+function fullExtraToString(extra, usenbt){
+	if(!extra) return "";
+	var str = "";
+	if(jsonExtra = extra.asJson()){
+		if((_value = jsonExtra.opt('data')) && _value.length() == 0) jsonExtra.remove('data');
+		if((_value = jsonExtra.opt('name')) && _value.length() == 0) jsonExtra.remove('name');
+		str += jsonExtra.toString();
+	}
+	//if(usenbt && (tag__1 = extra.getCompoundTag()))str += JSON.stringify(tag__1.toScriptable());
+	return str;
+}
+
+function checkBlocksOnSides(_blockSource, _coords, _blocks, _toList, _func){
+	if(typeof(_coords) != "object"){
+		_func = _toList;
+		_toList = _blocks;
+		_blocks = _coords;
+		_coords = _blockSource;
+		_blockSource = _coords._blockSource;
+	}
+	var list = [];
+	for (var i in newSides) {
+		var coords = {
+			x: _coords.x + newSides[i][0],
+			y: _coords.y + newSides[i][1],
+			z: _coords.z + newSides[i][2]
+		}
+		var block = _blockSource.getBlock(coords.x, coords.y, coords.z);
+		if((!_func || _func(_blockSource, coords, block, _toList ? list : undefined)) && (Array.isArray(_blocks) ? _blocks.indexOf(block.id) != -1 : _blocks == block.id || (_blocks == -1 && block.id != 0)))
+			if(_toList)
+				list.push(coords); 
+			else 
+				return coords;
+	}
+	return _toList ? list : false;
 }
