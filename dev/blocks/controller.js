@@ -64,19 +64,17 @@ Block.registerDropFunction("RS_controller", function (coords, id, data, diggingL
 		if(tile.data.isCreative){
 			return;
 		}
-		var extra = null;
 		if (tile.data.energy > 0) {
 			extra = new ItemExtraData();
 			extra.putInt('energy', tile.data.energy);
 		}
-		var block_data = 0;
 		var energyScaled = controllerFuncs.getEnergyScaled(100, tile.data.energy);
 		if (energyScaled <= 0) {
-			block_data = 0;
+			data = 0;
 		} else if (energyScaled <= 20) {
-			block_data = 1;
+			data = 1;
 		} else {
-			block_data = 2;
+			data = 2;
 		}
 	}
 	return [[id, 1, data, extra]];
