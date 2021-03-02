@@ -56,28 +56,7 @@ Item.registerIconOverrideFunction(BlockID['RS_controller'], function(item, isMod
 })
 
 Block.registerDropFunction("RS_controller", function (coords, id, data, diggingLevel, toolLevel, player, _blockSource) {
-	var extra = null;
-	var tile = World.getTileEntity(coords.x, coords.y, coords.z, _blockSource);
-	if(tile){
-		tile.data.LAST_NETWORK_ID = tile.data.NETWORK_ID;
-		tile.data.NETWORK_ID == "f";
-		if(tile.data.isCreative){
-			return;
-		}
-		if (tile.data.energy > 0) {
-			extra = new ItemExtraData();
-			extra.putInt('energy', tile.data.energy);
-		}
-		var energyScaled = controllerFuncs.getEnergyScaled(100, tile.data.energy);
-		if (energyScaled <= 0) {
-			data = 0;
-		} else if (energyScaled <= 20) {
-			data = 1;
-		} else {
-			data = 2;
-		}
-	}
-	return [[id, 1, data, extra]];
+	return [];
 });
 
 Block.registerPlaceFunction("RS_controller", function (coords, item, block, player, blockSource) {
@@ -540,7 +519,7 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 			this.networkData.putInt('energy', this.data.energy);
 			this.networkData.putInt('NETWORK_ID', RSNetworks.length);
 			this.networkData.putBoolean('isActive', this.data.isActive || false);
-			if(this.unsaveableSlots){
+			if(this.unsaveableSlots && InnerCore_pack.packVersionCode >= 120){
 				if(Array.isArray(this.unsaveableSlots)){
 					for(var i in this.unsaveableSlots)this.container.setSlotSavingEnabled(this.unsaveableSlots[i], false);
 				} else {
@@ -1081,11 +1060,33 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		if(!this.networkEntity) return Logger.Log(Item.getName(this.blockInfo.id, this.blockInfo.data) + ' model on: ' + cts(this) + ' cannot be displayed');
 		this.sendPacket("refreshModel", {energy: this.data.energy, isActive: this.data.isActive, coords: {x: this.x, y: this.y, z: this.z}});
 	},
-	destroy: function () {
+	destroy: function (param1, isDropAllowed) {
 		if (this.data.NETWORK_ID != "f" && RSNetworks[this.data.NETWORK_ID]) {
 			set_net_for_blocks(this, 'f');
 			delete RSNetworks[this.data.NETWORK_ID];
 		}
+		if(!isDropAllowed && isDropAllowed !== undefined) return;
+		this.data.LAST_NETWORK_ID = this.data.NETWORK_ID;
+		this.data.NETWORK_ID == "f";
+		if(this.data.isCreative){
+			this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, 3, null);
+			return;
+		}
+		var extra = null;
+		if (this.data.energy > 0) {
+			extra = new ItemExtraData();
+			extra.putInt('energy', this.data.energy);
+		}
+		var block_data = 0;
+		var energyScaled = controllerFuncs.getEnergyScaled(100, this.data.energy);
+		if (energyScaled <= 0) {
+			block_data = 0;
+		} else if (energyScaled <= 20) {
+			block_data = 1;
+		} else {
+			block_data = 2;
+		}
+		this.blockSource.spawnDroppedItem(this.x + 0.5, this.y + 0.5, this.z + 0.5, BlockID['RS_controller'], 1, block_data, extra);
 	},
 	getScreenByName: function(screenName) {
 		if(screenName == 'main')return CONTROLLER_GUI;

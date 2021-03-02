@@ -612,7 +612,7 @@ const RefinedStorage = {
 						}
 					}
 				});
-				if(this.unsaveableSlots){
+				if(this.unsaveableSlots && InnerCore_pack.packVersionCode >= 120){
 					if(Array.isArray(this.unsaveableSlots)){
 						for(var i in this.unsaveableSlots)this.container.setSlotSavingEnabled(this.unsaveableSlots[i], false);
 					} else {

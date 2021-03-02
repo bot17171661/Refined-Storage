@@ -883,8 +883,7 @@ RefinedStorage.createTile(BlockID.RS_grid, {
 					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
 						var _extra = (this_item ? this_item.extra : item.extra);
-						if(!_extra) player.addItemToInventory(item.id, count - res, item.data);
-						else player.addItemToInventory(item.id, count - res, item.data, _extra || null);
+						player.addItemToInventory(item.id, count - res, item.data, _extra || null, true);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}

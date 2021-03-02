@@ -784,15 +784,14 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 				if(slot_.count != 0){
 					var answ = this.pushItem(slot_, slot_.count, true);
 					if(answ != 0){
-						__PlayerActor.addItemToInventory(slot_.id, answ, slot_.data);
+						__PlayerActor.addItemToInventory(slot_.id, answ, slot_.data, null, true);
 					}
 				}
 			}
 		};
 		cbkUsedFunc.apply(this);
 		Callback.invokeCallback("VanillaWorkbenchCraft", result, this.container);
-		if(!result.extra)__PlayerActor.addItemToInventory(result.id, result.count, result.data);
-		else __PlayerActor.addItemToInventory(result.id, result.count, result.data, result.extra || null);
+		__PlayerActor.addItemToInventory(result.id, result.count, result.data, result.extra || null, true);
 		Callback.invokeCallback("VanillaWorkbenchPostCraft", result, this.container);
 		return true;
 	},
@@ -840,8 +839,7 @@ RefinedStorage.copy(BlockID.RS_grid, BlockID.RS_crafting_grid, {
 					var count = this_item && this_item.count < itemMaxStack ? Math.min(event.count, item.count, itemMaxStack - this_item.count) : Math.min(event.count, item.count/* , itemMaxStack*emptySlots.length */);
 					if((res = this.deleteItem(item, count, true)) < count) {
 						var _extra = (this_item ? this_item.extra : item.extra);
-						if(!_extra) player.addItemToInventory(item.id, count - res, item.data);
-						else player.addItemToInventory(item.id, count - res, item.data, _extra || null);
+						player.addItemToInventory(item.id, count - res, item.data, _extra || null, true);
 						this.items();
 						this.refreshGui(false, false, item.count <= count || event.updateFull);
 					}
