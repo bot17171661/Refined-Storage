@@ -60,9 +60,12 @@ Block.registerDropFunction("RS_controller", function (coords, id, data, diggingL
 });
 
 Block.registerPlaceFunction("RS_controller", function (coords, item, block, player, blockSource) {
-	coords = World.canTileBeReplaced(block.id, block.data) ? coords : coords.relative;
-	var relBlock = blockSource.getBlockId(coords.x, coords.y, coords.z);
-	if (relBlock != 0 && relBlock != 9 && relBlock != 11) return;
+    if(!World.canTileBeReplaced(block.id, block.data)){
+		var relBlock = blockSource.getBlock(coords.relative.x, coords.relative.y, coords.relative.z);
+		if (World.canTileBeReplaced(relBlock.id, relBlock.data)){
+			coords = coords.relative;
+		} else return;
+	}
 	blockSource.setBlock(coords.x, coords.y, coords.z, item.id, item.data);
 	var tile = World.addTileEntity(coords.x, coords.y, coords.z, blockSource) || World.getTileEntity(coords.x, coords.y, coords.z, blockSource);
 	var energy = 0;
@@ -76,6 +79,7 @@ Block.registerPlaceFunction("RS_controller", function (coords, item, block, play
 		energy = item.extra.getInt('energy');
 		tile.data.energy = energy;
 	}
+	Entity.setCarriedItem(player, item.id, item.count - 1, item.data, item.extra);
 });
 var elementsGUI_controller = {};
 var controller_other_data = {
@@ -931,18 +935,18 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		return true;
 	},
 	post_setActive: function(state){
+		set_is_active_for_blocks_net(this.data.NETWORK_ID, state, true, this.blockSource);
 		if(!state){
 			this.data.net_map = {};
 			this.data.usage = 0;
 			this.container.setText('usage', Translation.translate('Usage') + ": 0 FE/t");
 			this.container.sendChanges();
 		} else {
+			this.updateNetMap();
 			this.container.setText('usage', Translation.translate('Usage')+": " + this.data.usage + " FE/t");
 			this.container.sendChanges();
-			this.updateNetMap();
 		}
 		this.refreshGui();
-		set_is_active_for_blocks_net(this.data.NETWORK_ID, state, true, this.blockSource);
 	},
 	pages: function () {
 		if (this.container.getNetworkEntity().getClients().iterator().hasNext() && this.data.NETWORK_ID != "f" && this.data.isActive) {
@@ -1136,7 +1140,11 @@ RefinedStorage.createTile(BlockID.RS_controller, {
 		}
 	},
 	containerEvents: {
-
+		updateRedstoneMode: function(eventData, connectedClient) {
+			if(this.data.redstone_mode == undefined) this.data.redstone_mode = 0;
+			this.data.redstone_mode = this.data.redstone_mode >= 2 ? 0 : this.data.redstone_mode + 1;
+			if(!this.refreshRedstoneMode()) this.refreshGui();
+		}
 	}
 })
 EnergyTileRegistry.addEnergyTypeForId(BlockID.RS_controller, FE);

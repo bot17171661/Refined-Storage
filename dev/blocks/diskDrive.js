@@ -271,17 +271,8 @@ testButtons(diskDriveGUI.getWindow('header').getContent().elements, initDDelemen
 var _ddfont = new JavaFONT(elementsGUI_dd['items'].font);
 var getDiskDriveTextItemsWidth = function(){
 	var drawScale = diskDriveGUI.getWindow('main').location.getDrawingScale();
-	return _ddfont.getBounds(text, elementsGUI_dd['items'].x * drawScale, elementsGUI_dd['items'].y * drawScale, parseFloat(1.0)).width();
+	return _ddfont.getBounds(diskDriveGUI.getWindow('main').getElements().get('items').getBinding('text'), elementsGUI_dd['items'].x * drawScale, elementsGUI_dd['items'].y * drawScale, parseFloat(1.0)).width();
 };
-(function(){
-	var elementIns = diskDriveGUI.getWindow('main').getElements().get('items');
-	var clazz = elementIns.getClass();
-	var field = clazz.getDeclaredField("textBounds");
-	field.setAccessible(true);
-	getDiskDriveTextItemsWidth = function(){
-		return field.get(elementIns).width();
-	}
-})();
 
 RefinedStorage.createTile(BlockID.diskDrive, {
 	defaultValues: {
@@ -433,11 +424,6 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 			if(Config.dev)Logger.Log('Local refreshing DiskDrive model: block_data: ' + this.networkData.getInt('block_data') + ' ; isActive: ' + this.networkData.getBoolean('isActive') + ' ; disks_data: ' + JSON.stringify(disks_data), 'RefinedStorageDebug');
 			mapDisks(this, this.networkData.getInt('block_data') || 0, disks_data, this.networkData.getBoolean('isActive'));
 		},
-		tick: function(){
-			if(!diskDriveGUI.isOpened()) return;
-			var element = diskDriveGUI.getWindow('main').getElements().get('items');
-			element.setPosition(Math.max(elementsGUI_dd['items'].start_x - getDiskDriveTextItemsWidth()/2, elementsGUI_dd['scale'].x), elementsGUI_dd['items'].y);
-		},
 		events: {
 			refreshModel: function(eventData, connectedClient){
 				var disks_data = (_data = this.networkData.getString('slots', 'null')) != 'null' ? JSON.parse(_data).map(function(elem){
@@ -464,6 +450,12 @@ RefinedStorage.createTile(BlockID.diskDrive, {
 	containerEvents: {
 
 	}
+});
+
+Callback.addCallback('LocalTick', function(){
+	if(!diskDriveGUI.isOpened()) return;
+	var element = diskDriveGUI.getWindow('main').getElements().get('items');
+	element.setPosition(Math.max(elementsGUI_dd['items'].start_x - getDiskDriveTextItemsWidth()/2, elementsGUI_dd['scale'].x), elementsGUI_dd['items'].y);
 });
 
 StorageInterface.createInterface(BlockID.diskDrive, {

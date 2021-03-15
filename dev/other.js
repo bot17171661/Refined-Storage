@@ -15,7 +15,7 @@ Callback['com.ulalald.asd'] = Callback['com.ulalald.asd'] || [];
 Callback['com.ulalald.asd.ddd'] = false;
 const mod = FileTools.ReadJSON(__dir__ + 'mod.info');
 Callback['com.ulalald.asd'].push(mod);
-Callback.addCallback("LevelLoaded", function () {
+Callback.addCallback("LevelDisplayed", function () {
 	//Game.tipMessage('§c' + mod.name + '\n§a' + mod.version)
 	if (!Callback['com.ulalald.asd.ddd']) {
 		Game.tipMessage(Callback['com.ulalald.asd'].map(function (elem) {
@@ -390,8 +390,7 @@ function rotateBitmap(__bitmap, __angle) {
 }
 
 const cts = function (coords) {
-	if (typeof (coords) != "object") return null;
-	return coords.x + "," + coords.y + "," + coords.z;
+	return coords.x + (coords.y != undefined ? "," + coords.y : "") + "," + coords.z;
 }
 
 const createBitmap = function(__bitmap){
@@ -452,6 +451,8 @@ const newSides = [
 	[-1, 0, 0],
 	[1, 0, 0]
 ]
+
+const reverseSides = [1,0,3,2,5,4];
 
 const newSides_ = [
 	'0_-1_0',

@@ -490,7 +490,7 @@
     Callback.addCallback('PostLoaded', function(){
         if(skipButton) return;
         ModInfoUI_Button_Container.openAs(ModInfoUI_Button);
-    }, Number.MIN_VALUE);
+    }, -10000);
 
     function switchPage(name){
         for(var i in mainWindows){
@@ -711,7 +711,7 @@
     })
     Callback.addCallback('PostLoaded', function(){
         switchPage('changelog');
-    })
+    }, -10001);
     return;
 
 })()
